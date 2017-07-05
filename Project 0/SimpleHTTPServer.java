@@ -21,15 +21,15 @@ public class SimpleHTTPServer{
 			return;
 		}
 		
-		try{
-			int port = Integer.parseInt(args[0]);
-			ServerSocket server = new ServerSocket(port);
+		int port = Integer.parseInt(args[0]);
+		
+		try(ServerSocket server = new ServerSocket(port)){
 			while(true){
 				new SimpleServerThread(server.accept()).start();
 			}
 		}
 		catch(Exception e){
-			System.out.println(e);
+			e.printStackTrace();
 		}	
 	}
 }
@@ -39,6 +39,19 @@ class SimpleServerThread extends Thread{
 	private Socket client = null;
 	
 	public SimpleServerThread(Socket client){
-		
-	}	
+		super("SimpleServerThread");
+		this.client = client;
+	}
+
+	public void run(){
+		try(
+			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+			BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+		){
+			//do the stuff here
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+	}
 }
