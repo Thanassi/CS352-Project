@@ -1,5 +1,6 @@
 import java.net.*;
 import java.io.*;
+import java.util.*;
 
 /* TODO: Once response has been sent, you should flush() your output streams, wait 
 		 a quarter second, close down all communication objects and exit thread.*/
@@ -74,7 +75,7 @@ class SimpleServerThread extends Thread{
 			
 			out.flush();
 			
-			TIMEUNIT.MILLISECONDS.sleep(250);
+			TimeUnit.MILLISECONDS.sleep(250);
 			
 			client.close();
 			
