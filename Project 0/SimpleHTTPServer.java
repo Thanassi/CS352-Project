@@ -37,8 +37,24 @@ class SimpleServerThread extends Thread{
 		this.client = client;
 	}
 	// Reads in single string, parses, and sends back response
-	public String processInput(String input){
+	public String processInput(String theInput){
+		// blank input
+		if(theInput == null){
+			return "400 Bad Request";
+		}
 		
+		String[] inputTokens = theInput.split(" ");
+		// improper formatting
+		if(inputTokens.length != 2){
+			return "400 Bad Request";
+		}
+		
+		if(inputTokens[0] == "GET"){
+			
+		}else{
+			return "501 Not Implemented";
+		}
+		// split string into 2 and check inputs for validity
 	}
 	// Run the thread
 	public void run(){
