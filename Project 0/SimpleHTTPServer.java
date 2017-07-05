@@ -1,28 +1,21 @@
 import java.net.*;
 import java.io.*;
 
-/* TODO: When client connects to ServerSocket, spawn a new thread to handle 
-		 communication. No reading or writing to or from a Socket should occur in 
-		 the class that the ServerSocket is accepting connections in. 
-		 
-		 In the thread, read a single String from the client, parse it as an 
-		 HTTP 0.8 request and send back an appropriate response according to 
-		 the HTTP 0.8 protocol below.
-		 
-		 Once response has been sent, you should flush() your output streams, wait 
+/* TODO: Once response has been sent, you should flush() your output streams, wait 
 		 a quarter second, close down all communication objects and exit thread.*/
 
 public class SimpleHTTPServer{
 	
 	public static void main(String[] args){
-		
+		// Check if the number of inputs is correct
 		if(args.length != 1){
 			System.out.println("Incorrect number of args");
 			return;
 		}
-		
+		// Set the connection port for the socket
 		int port = Integer.parseInt(args[0]);
 		
+		// Spawn a new thread to handle communication
 		try(ServerSocket server = new ServerSocket(port)){
 			while(true){
 				new SimpleServerThread(server.accept()).start();
@@ -38,11 +31,32 @@ class SimpleServerThread extends Thread{
 
 	private Socket client = null;
 	
+	// Constructs a thread for a socket
 	public SimpleServerThread(Socket client){
 		super("SimpleServerThread");
 		this.client = client;
 	}
-
+	// Reads in single string, parses, and sends back response
+	public String processInput(String theInput){
+		// blank input
+		if(theInput == null){
+			return "400 Bad Request";
+		}
+		
+		String[] inputTokens = theInput.split(" ");
+		// improper formatting
+		if(inputTokens.length != 2){
+			return "400 Bad Request";
+		}
+		
+		if(inputTokens[0] == "GET"){
+			
+		}else{
+			return "501 Not Implemented";
+		}
+		// split string into 2 and check inputs for validity
+	}
+	// Run the thread
 	public void run(){
 		try(
 			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
@@ -52,12 +66,31 @@ class SimpleServerThread extends Thread{
 			String code = processInput(input);
 			out.println(code);
 			if(code.equals("200 OK")){
-				getResource(input.split(" ")[1]);
+				out.println();
+				out.println();
+				printResource(input.substring(5), out);
+				out.println();
 			}
+			
+			out.flush();
+			
+			TIMEUNIT.MILLISECONDS.sleep(250);
+			
+			client.close();
+			
 		}
 		catch(Exception e){
 			e.printStackTrace();
 		}
 	}
 	
+	public void printResource(String path, PrintWriter out){
+		try (BufferedReader br = new BufferedReader(new FileReader(path))) {
+		   String data = "", line = null;
+		   while ((line = br.readLine()) != null) {
+			   data += line;
+		   }
+		   out.println(data);
+		}
+	}
 }
