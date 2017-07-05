@@ -1,27 +1,34 @@
-public static void main(String[] args){
+import java.net.*;
+import java.io.*;
+
+public class SimpleHTTPServer{
 	
-	if(args.length != 1){
-		System.out.println("Incorrect number of args");
-		return;
+	public static void main(String[] args){
+		
+		if(args.length != 1){
+			System.out.println("Incorrect number of args");
+			return;
+		}
+		
+		try{
+			int port = Integer.parseInt(args[0]);
+			ServerSocket server = new ServerSocket(port);
+			while(true){
+				new SimpleServerThread(server.accept()).start();
+			}
+		}
+		catch(Exception e){
+			System.out.println(e);
+		}	
 	}
+}
+
+class SimpleServerThread extends Thread{
+
+	private Socket client = null;
 	
-	int port;
-	ServerSocket server;
-	Socket client;
-	PrintWriter out;
-	BufferedReader in;
-	
-	try{
-		port = Integer.parseInt(args[0]);
-		server = new ServerSocket(port);
-		client = server.accept();
-		out = new PrintWriter(client.getOutputStream(), true);
-		in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+	public SimpleServerThread(Socket client){
 		
 	}
-	catch(Exception e){
-		System.out.println(e);
-	}
-
 	
 }
