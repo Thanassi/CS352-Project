@@ -63,6 +63,7 @@ class SimpleServerThread extends Thread{
 			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 			BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 		){
+			client.setSoTimeout(3000);
 			String input = in.readLine();
 			String code = processInput(input);
 			out.println(code);
