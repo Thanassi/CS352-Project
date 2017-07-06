@@ -29,7 +29,7 @@ public class SimpleHTTPServer{
 }
 
 class SimpleServerThread extends Thread{
-
+	
 	private Socket client = null;
 	
 	// Constructs a thread for a socket
@@ -70,9 +70,9 @@ class SimpleServerThread extends Thread{
 				out.println();
 				out.println();
 				printResource(input.substring(5), out);
-				out.println();
 			}
 			
+			out.println();
 			out.flush();
 			
 			TimeUnit.MILLISECONDS.sleep(250);
@@ -80,9 +80,21 @@ class SimpleServerThread extends Thread{
 			client.close();
 			
 		}
+		catch(SocketTimeoutException e){
+			out.println("408 Request Timeout");
+			out.println();
+			
+			out.flush();
+			
+			TimeUnit.MILLISECONDS.sleep(250);
+			
+			client.close();
+		}
 		catch(Exception e){
 			e.printStackTrace();
-		}
+			
+			client.close();
+		}			
 	}
 	
 	public void printResource(String path, PrintWriter out){
