@@ -20,11 +20,13 @@ import java.util.concurrent.TimeUnit;
 public class SimpleHTTPServer{
 	
 	public static void main(String[] args){
+		
 		// Check if the number of inputs is correct
 		if(args.length != 1){
 			System.out.println("Incorrect number of args");
 			return;
 		}
+		
 		// Set the connection port for the socket
 		int port = Integer.parseInt(args[0]);
 		
@@ -56,6 +58,7 @@ class SimpleServerThread extends Thread{
 	public void run(){
 		
 		String input;
+		
 		try{
 			try{
 				out = new PrintWriter(client.getOutputStream(), true);
@@ -90,7 +93,7 @@ class SimpleServerThread extends Thread{
 			if(code.equals("200 OK")){
 				out.println();
 				out.println();
-				printResource(input.substring(5), out);
+				printResource(input.substring(5));
 			}
 			
 			out.println();
@@ -101,7 +104,8 @@ class SimpleServerThread extends Thread{
 			
 			closeObjects();
 		}
-		// general error(i hope this works)
+		
+		// something in our code broke
 		catch(Exception e){
 			out.println("500 Internal Error");
 			out.println();
@@ -116,16 +120,19 @@ class SimpleServerThread extends Thread{
 	
 	// Reads in single string, parses, and sends back response
 	public String processInput(String theInput) throws IOException{
+		
 		// blank input
 		if(theInput == null){
 			return "400 Bad Request";
 		}
 		
 		String[] inputTokens = theInput.split(" ");
+		
 		// improper formatting
 		if(inputTokens.length != 2){
 			return "400 Bad Request";
 		}
+		
 		// command is GET
 		if(inputTokens[0].equals("GET")){
 			
@@ -136,40 +143,46 @@ class SimpleServerThread extends Thread{
 				return "404 Not Found";
 			}
 			
-		}else{
-			// command other than GET 
+		// command other than GET	
+		}else{ 
 			return "501 Not Implemented";
 		}
 	}
 	
-	// Print resource contents line by line
-	public void printResource(String path, PrintWriter out) throws IOException{
+	// Print resource contents in one line
+	public void printResource(String path) throws IOException{
+		
 		try (BufferedReader br = new BufferedReader(new FileReader(path))) {
+			
 		   StringBuilder data = new StringBuilder();
 		   String line;
+		   
 		   while ((line = br.readLine()) != null) {
 			   data.append(line);
 		   }
+		   
 		   out.println(data);
 		}
 	}
 	
+	// sleep for given time in milliseconds
 	public void sleep(int time){
 		try{
 			TimeUnit.MILLISECONDS.sleep(time);
 		}
 		catch(Exception e){
-			e.printStackTrace();
+			return;
 		}
 	}
 	
+	// close socket and iostreams
 	public void closeObjects(){
 		try{
 			client.close();
 			in.close();
 			out.close();
 		}catch(Exception e){
-			e.printStackTrace();
+			return;
 		}
 	}
 }
