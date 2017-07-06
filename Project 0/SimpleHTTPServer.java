@@ -45,37 +45,7 @@ class SimpleServerThread extends Thread{
 		super("SimpleServerThread");
 		this.client = client;
 	}
-	// Reads in single string, parses, and sends back response
-	public String processInput(String theInput) throws IOException{
-		// blank input
-		if(theInput == null){
-			return "400 Bad Request";
-		}
-		
-		String[] inputTokens = theInput.split(" ");
-		// improper formatting
-		if(inputTokens.length != 2){
-			return "400 Bad Request";
-		}
-		// command is GET
-		if(inputTokens[0].equals("GET")){
-			// no file name given
-			if(inputTokens[1] == null){
-				return "400 Bad Request";
-			}else{
-				// Check if file exists
-				File resource = new File(inputTokens[1]);
-				if(resource.exists()){
-					return "200 OK";
-				}else{
-					return "404 Not Found";
-				}
-			}
-		}else{
-			// command other than GET 
-			return "501 Not Implemented";
-		}
-	}
+
 	// Run the thread
 	public void run(){
 		
@@ -101,7 +71,7 @@ class SimpleServerThread extends Thread{
 				
 				out.flush();
 				
-				sleep();
+				sleep(250);
 				
 				closeObjects();
 				return;
@@ -121,7 +91,7 @@ class SimpleServerThread extends Thread{
 			out.flush();
 			
 			// wait quarter sec before closing thread
-			sleep();
+			sleep(250);
 			
 			closeObjects();
 		}
@@ -132,11 +102,40 @@ class SimpleServerThread extends Thread{
 			
 			out.flush();
 			
-			sleep();
+			sleep(250);
 			
 			closeObjects();
 		}			
 	}
+	
+	// Reads in single string, parses, and sends back response
+	public String processInput(String theInput) throws IOException{
+		// blank input
+		if(theInput == null){
+			return "400 Bad Request";
+		}
+		
+		String[] inputTokens = theInput.split(" ");
+		// improper formatting
+		if(inputTokens.length != 2){
+			return "400 Bad Request";
+		}
+		// command is GET
+		if(inputTokens[0].equals("GET")){
+			
+			// Check if file exists
+			if(new File("." + inputTokens[1]).isFile()){
+				return "200 OK";
+			}else{
+				return "404 Not Found";
+			}
+			
+		}else{
+			// command other than GET 
+			return "501 Not Implemented";
+		}
+	}
+	
 	// Print resource contents line by line
 	public void printResource(String path, PrintWriter out) throws IOException{
 		try (BufferedReader br = new BufferedReader(new FileReader(path))) {
@@ -148,9 +147,9 @@ class SimpleServerThread extends Thread{
 		}
 	}
 	
-	public void sleep(){
+	public void sleep(int time){
 		try{
-			TimeUnit.MILLISECONDS.sleep(250);
+			TimeUnit.MILLISECONDS.sleep(time);
 		}
 		catch(Exception e){
 			e.printStackTrace();
@@ -159,9 +158,9 @@ class SimpleServerThread extends Thread{
 	
 	public void closeObjects(){
 		try{
-			out.close();
-			in.close();
 			client.close();
+			in.close();
+			out.close();
 		}catch(Exception e){
 			e.printStackTrace();
 		}
