@@ -1,6 +1,7 @@
 import java.net.*;
 import java.io.*;
-import java.util.*;
+import java.util.concurrent.TimeUnit;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -75,10 +76,13 @@ class SimpleServerThread extends Thread{
 	}
 	// Run the thread
 	public void run(){
-		try(
-			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-			BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-		){
+		
+		PrintWriter out;
+		BufferedReader in;
+		
+		try{
+			out = new PrintWriter(client.getOutputStream(), true);
+			in = new BufferedReader(new InputStreamReader(client.getInputStream()));
 			// Timeout in 3 seconds if no input is given
 			client.setSoTimeout(3000);
 			String input = in.readLine();
@@ -96,6 +100,8 @@ class SimpleServerThread extends Thread{
 			// wait quarter sec before closing thread
 			TimeUnit.MILLISECONDS.sleep(250);
 			
+			out.close();
+			in.close();
 			client.close();
 			
 		}
@@ -108,6 +114,8 @@ class SimpleServerThread extends Thread{
 			
 			TimeUnit.MILLISECONDS.sleep(250);
 			
+			out.close();
+			in.close();
 			client.close();
 		}
 		// general error(i hope this works)
@@ -119,6 +127,8 @@ class SimpleServerThread extends Thread{
 			
 			TimeUnit.MILLISECONDS.sleep(250);
 			
+			out.close();
+			in.close();
 			client.close();
 		}			
 	}
