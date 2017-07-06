@@ -1,9 +1,14 @@
 import java.net.*;
 import java.io.*;
 import java.util.*;
-
-/* TODO: Once response has been sent, you should flush() your output streams, wait 
-		 a quarter second, close down all communication objects and exit thread.*/
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+/*
+Authors: 
+Thanassi Natsis
+Alexey Smirnov
+*/
 
 public class SimpleHTTPServer{
 	
@@ -49,13 +54,24 @@ class SimpleServerThread extends Thread{
 		if(inputTokens.length != 2){
 			return "400 Bad Request";
 		}
-		
-		if(inputTokens[0] == "GET"){
-			
+		// command is GET
+		if(inputTokens[0].equals("GET")){
+			// no file name given
+			if(inputTokens[1] == null){
+				return "400 Bad Request";
+			}else{
+				// Check if file exists
+				File resource = new File(inputTokens[1]);
+				if(resource.exists()){
+					return "200 OK";
+				}else{
+					return "404 Not Found";
+				}
+			}
 		}else{
+			// command other than GET 
 			return "501 Not Implemented";
 		}
-		// split string into 2 and check inputs for validity
 	}
 	// Run the thread
 	public void run(){
@@ -63,10 +79,12 @@ class SimpleServerThread extends Thread{
 			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 			BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 		){
+			// Timeout in 3 seconds if no input is given
 			client.setSoTimeout(3000);
 			String input = in.readLine();
 			String code = processInput(input);
 			out.println(code);
+			// correctly formatted GET input with correct file name
 			if(code.equals("200 OK")){
 				out.println();
 				out.println();
@@ -75,12 +93,13 @@ class SimpleServerThread extends Thread{
 			
 			out.println();
 			out.flush();
-			
+			// wait quarter sec before closing thread
 			TimeUnit.MILLISECONDS.sleep(250);
 			
 			client.close();
 			
 		}
+		// timeout
 		catch(SocketTimeoutException e){
 			out.println("408 Request Timeout");
 			out.println();
@@ -97,7 +116,7 @@ class SimpleServerThread extends Thread{
 			client.close();
 		}			
 	}
-	
+	// Print resource contents line by line
 	public void printResource(String path, PrintWriter out){
 		try (BufferedReader br = new BufferedReader(new FileReader(path))) {
 		   String data = "", line = null;
