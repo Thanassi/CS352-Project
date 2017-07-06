@@ -43,7 +43,7 @@ class SimpleServerThread extends Thread{
 		this.client = client;
 	}
 	// Reads in single string, parses, and sends back response
-	public String processInput(String theInput){
+	public String processInput(String theInput) throws IOException{
 		// blank input
 		if(theInput == null){
 			return "400 Bad Request";
@@ -74,7 +74,7 @@ class SimpleServerThread extends Thread{
 		}
 	}
 	// Run the thread
-	public void run(){
+	public void run() throws SocketTimeoutException{
 		try(
 			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 			BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
