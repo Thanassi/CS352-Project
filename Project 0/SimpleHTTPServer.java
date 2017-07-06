@@ -110,6 +110,7 @@ class SimpleServerThread extends Thread{
 			
 			client.close();
 		}
+		// general error(i hope this works)
 		catch(Exception e){
 			out.println("500 Internal Error");
 			out.println();
