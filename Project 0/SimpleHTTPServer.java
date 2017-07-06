@@ -111,7 +111,12 @@ class SimpleServerThread extends Thread{
 			client.close();
 		}
 		catch(Exception e){
-			e.printStackTrace();
+			out.println("500 Internal Error");
+			out.println();
+			
+			out.flush();
+			
+			TimeUnit.MILLISECONDS.sleep(250);
 			
 			client.close();
 		}			
