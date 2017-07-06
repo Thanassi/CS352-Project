@@ -36,7 +36,9 @@ public class SimpleHTTPServer{
 
 class SimpleServerThread extends Thread{
 	
-	private Socket client = null;
+	private Socket client;
+	private PrintWriter out;
+	private BufferedReader in;
 	
 	// Constructs a thread for a socket
 	public SimpleServerThread(Socket client){
@@ -44,7 +46,7 @@ class SimpleServerThread extends Thread{
 		this.client = client;
 	}
 	// Reads in single string, parses, and sends back response
-	public String processInput(String theInput){
+	public String processInput(String theInput) throws IOException{
 		// blank input
 		if(theInput == null){
 			return "400 Bad Request";
@@ -77,17 +79,37 @@ class SimpleServerThread extends Thread{
 	// Run the thread
 	public void run(){
 		
-		PrintWriter out;
-		BufferedReader in;
-		
+		String input;
 		try{
-			out = new PrintWriter(client.getOutputStream(), true);
-			in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+			try{
+				out = new PrintWriter(client.getOutputStream(), true);
+				in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+			}
+			catch(Exception e){
+				return;
+			}
+			
 			// Timeout in 3 seconds if no input is given
-			client.setSoTimeout(3000);
-			String input = in.readLine();
+			try{
+				client.setSoTimeout(3000);
+				input = in.readLine();
+			}
+			// timeout
+			catch(SocketTimeoutException e){
+				out.println("408 Request Timeout");
+				out.println();
+				
+				out.flush();
+				
+				sleep();
+				
+				closeObjects();
+				return;
+			}
+			
 			String code = processInput(input);
 			out.println(code);
+			
 			// correctly formatted GET input with correct file name
 			if(code.equals("200 OK")){
 				out.println();
@@ -97,26 +119,11 @@ class SimpleServerThread extends Thread{
 			
 			out.println();
 			out.flush();
+			
 			// wait quarter sec before closing thread
-			TimeUnit.MILLISECONDS.sleep(250);
+			sleep();
 			
-			out.close();
-			in.close();
-			client.close();
-			
-		}
-		// timeout
-		catch(SocketTimeoutException e){
-			out.println("408 Request Timeout");
-			out.println();
-			
-			out.flush();
-			
-			TimeUnit.MILLISECONDS.sleep(250);
-			
-			out.close();
-			in.close();
-			client.close();
+			closeObjects();
 		}
 		// general error(i hope this works)
 		catch(Exception e){
@@ -125,21 +132,38 @@ class SimpleServerThread extends Thread{
 			
 			out.flush();
 			
-			TimeUnit.MILLISECONDS.sleep(250);
+			sleep();
 			
-			out.close();
-			in.close();
-			client.close();
+			closeObjects();
 		}			
 	}
 	// Print resource contents line by line
-	public void printResource(String path, PrintWriter out){
+	public void printResource(String path, PrintWriter out) throws IOException{
 		try (BufferedReader br = new BufferedReader(new FileReader(path))) {
 		   String data = "", line = null;
 		   while ((line = br.readLine()) != null) {
 			   data += line;
 		   }
 		   out.println(data);
+		}
+	}
+	
+	public void sleep(){
+		try{
+			TimeUnit.MILLISECONDS.sleep(250);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+	}
+	
+	public void closeObjects(){
+		try{
+			out.close();
+			in.close();
+			client.close();
+		}catch(Exception e){
+			e.printStackTrace();
 		}
 	}
 }
