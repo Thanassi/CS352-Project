@@ -58,6 +58,7 @@ class SimpleServerThread extends Thread{
 	public void run(){
 		
 		String input;
+		String data;
 		
 		try{
 			try{
@@ -87,13 +88,21 @@ class SimpleServerThread extends Thread{
 			}
 			
 			String code = processInput(input);
-			out.println(code);
 			
 			// correctly formatted GET input with correct file name
 			if(code.equals("200 OK")){
+				data = printResource(input.substring(5));
+				if(data == null){
+					throw new Exception();
+				}
+				out.println(code);
 				out.println();
 				out.println();
-				printResource(input.substring(5));
+				out.println(data);
+			}
+			//error code
+			else{
+				out.println(code);
 			}
 			
 			out.println();
@@ -103,6 +112,7 @@ class SimpleServerThread extends Thread{
 			sleep(250);
 			
 			closeObjects();
+			return;
 		}
 		
 		// something in our code broke
@@ -115,6 +125,7 @@ class SimpleServerThread extends Thread{
 			sleep(250);
 			
 			closeObjects();
+			return;
 		}			
 	}
 	
@@ -150,7 +161,7 @@ class SimpleServerThread extends Thread{
 	}
 	
 	// Print resource contents in one line
-	public void printResource(String path) throws IOException{
+	public String printResource(String path) throws IOException{
 		
 		try (BufferedReader br = new BufferedReader(new FileReader(path))) {
 			
@@ -161,7 +172,10 @@ class SimpleServerThread extends Thread{
 			   data.append(line);
 		   }
 		   
-		   out.println(data);
+		   return data.toString();
+		}
+		catch(Exception e){
+			return null;
 		}
 	}
 	
