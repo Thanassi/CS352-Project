@@ -16,8 +16,11 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 
-public class SimpleHTTPServer{
+public class PartialHTTP1Server{
 	
 	public static void main(String[] args){
 		
@@ -30,10 +33,18 @@ public class SimpleHTTPServer{
 		// Set the connection port for the socket
 		int port = Integer.parseInt(args[0]);
 		
+		RejectedExecutionHandler handler = new RejectedHandler();
+		ThreadPoolExecutor pool = new ThreadPoolExecutor(5, 50, 0, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(), handler);
+		
+		Socket client;
+		Runnable worker;
+		
 		// Spawn a new thread to handle communication
 		try(ServerSocket server = new ServerSocket(port)){
 			while(true){
-				new SimpleServerThread(server.accept()).start();
+				client = server.accept();
+				worker = new ServerThread(client);
+				pool.execute(worker);
 			}
 		}
 		catch(Exception e){
@@ -42,15 +53,15 @@ public class SimpleHTTPServer{
 	}
 }
 
-class SimpleServerThread extends Thread{
+class ServerThread implements Runnable{
 	
-	private Socket client;
+	public Socket client;
+	
 	private PrintWriter out;
 	private BufferedReader in;
 	
 	// Constructs a thread for a socket
-	public SimpleServerThread(Socket client){
-		super("SimpleServerThread");
+	public ServerThread(Socket client){
 		this.client = client;
 	}
 
@@ -199,4 +210,24 @@ class SimpleServerThread extends Thread{
 			return;
 		}
 	}
+}
+
+class RejectedHandler implements RejectedExecutionHandler{
+
+	@Override
+	public void rejectedExecution(Runnable worker, ThreadPoolExecutor exec){
+		ServerThread work = (ServerThread) worker;
+		
+		try(PrintWriter out = new PrintWriter(work.client.getOutputStream(), true)){
+			
+			out.println("503 Service Unavailable");
+			out.println();
+			
+			work.client.close();
+		}
+		catch(Exception e){
+			return;
+		}
+	}
+	
 }
