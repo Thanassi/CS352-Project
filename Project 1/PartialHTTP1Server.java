@@ -48,14 +48,14 @@ public class PartialHTTP1Server{
 			}
 		}
 		catch(Exception e){
-			e.printStackTrace();
+			pool.shutdown();
 		}	
 	}
 }
 
 class ServerThread implements Runnable{
 	
-	public Socket client;
+	Socket client;
 	
 	private PrintWriter out;
 	private BufferedReader in;
@@ -215,15 +215,16 @@ class ServerThread implements Runnable{
 class RejectedHandler implements RejectedExecutionHandler{
 
 	@Override
-	public void rejectedExecution(Runnable worker, ThreadPoolExecutor exec){
-		ServerThread work = (ServerThread) worker;
+	public void rejectedExecution(Runnable r, ThreadPoolExecutor exec){
 		
-		try(PrintWriter out = new PrintWriter(work.client.getOutputStream(), true)){
+		ServerThread worker = (ServerThread) r;
+		
+		try(PrintWriter out = new PrintWriter(worker.client.getOutputStream(), true)){
 			
 			out.println("503 Service Unavailable");
 			out.println();
 			
-			work.client.close();
+			worker.client.close();
 		}
 		catch(Exception e){
 			return;
