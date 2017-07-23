@@ -15,10 +15,14 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 
+import java.time.format.DateTimeFormatter;
+import java.time.ZonedDateTime;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.Date;
 
 public class PartialHTTP1Server{
 	
@@ -68,7 +72,7 @@ class ServerThread implements Runnable{
 	// Run the thread
 	public void run(){
 		
-		String input;
+		String[] input = new String[2];
 		String data;
 		
 		try{
@@ -83,11 +87,15 @@ class ServerThread implements Runnable{
 			// Timeout in 3 seconds if no input is given
 			try{
 				client.setSoTimeout(3000);
-				input = in.readLine();
+				input[0] = in.readLine();
+				
+				if(in.ready()){
+					input[1] = in.readLine();
+				}
 			}
 			// timeout
 			catch(SocketTimeoutException e){
-				out.println("408 Request Timeout");
+				out.println("HTTP/1.0 408 Request Timeout");
 				out.println();
 				
 				out.flush();
@@ -102,18 +110,18 @@ class ServerThread implements Runnable{
 			
 			// correctly formatted GET input with correct file name
 			if(code.equals("200 OK")){
-				data = printResource(input.substring(5));
+				data = printResource(input[0].substring(5));
 				if(data == null){
 					throw new Exception();
 				}
-				out.println(code);
+				out.println("HTTP/1.0 " + code);
 				out.println();
 				out.println();
 				out.println(data);
 			}
 			//error code
 			else{
-				out.println(code);
+				out.println("HTTP/1.0 " + code);
 			}
 			
 			out.println();
@@ -128,7 +136,7 @@ class ServerThread implements Runnable{
 		
 		// something in our code broke
 		catch(Exception e){
-			out.println("500 Internal Error");
+			out.println("HTTP/1.0 500 Internal Error");
 			out.println();
 			
 			out.flush();
@@ -141,33 +149,75 @@ class ServerThread implements Runnable{
 	}
 	
 	// Reads in single string, parses, and sends back response
-	public String processInput(String theInput) throws IOException{
+	public String processInput(String[] input) throws IOException{
 		
 		// blank input
-		if(theInput == null){
+		if(input == null || input[0] == null){
 			return "400 Bad Request";
 		}
 		
-		String[] inputTokens = theInput.split(" ");
+		String date = null;
+		if(input[1] != null && !input[1].isEmpty()){
+			if(input[1].length() > 18 && input[1].substring(0,19).equals("If-Modified-Since: ")){
+				date = input[1].substring(19);
+			}
+			else{
+				return "400 Bad Request";
+			}
+		}
+		
+		String[] inputTokens = input[0].split(" ");
 		
 		// improper formatting
-		if(inputTokens.length != 2){
+		if(inputTokens.length != 3){
 			return "400 Bad Request";
 		}
 		
+		if(inputTokens[2].length() != 8 || !inputTokens[2].substring(0, 5).equals("HTTP/")
+			|| inputTokens[2].charAt(6) != '.' || !Character.isDigit(inputTokens[2].charAt(5))
+			|| !Character.isDigit(inputTokens[2].charAt(7))){
+			return "400 Bad Request";
+		}
+		
+		int firstDigit = Character.getNumericValue(inputTokens[2].charAt(5));
+		int secondDigit = Character.getNumericValue(inputTokens[2].charAt(7));
+		
+		if(firstDigit > 1 || (firstDigit == 1 && secondDigit > 0)){
+			return "505 HTTP Version Not Supported";
+		}
+		
+		Date headerTime = null, fileTime = null;
+		
 		// command is GET
-		if(inputTokens[0].equals("GET")){
+		switch(inputTokens[0]){
+			case "GET":				
+				File file = new File("." + inputTokens[1]);
 			
-			// Check if file exists
-			if(new File("." + inputTokens[1]).isFile()){
-				return "200 OK";
-			}else{
+				if(date != null){
+					headerTime = Date.from(ZonedDateTime.parse(date, DateTimeFormatter.RFC_1123_DATE_TIME).now().toInstant());
+					fileTime = new Date(file.lastModified());
+				}
+				
+				if(file.isFile() && file.canRead() && file.canWrite()){
+					if(headerTime == null || fileTime == null || headerTime.compareTo(fileTime) < 0){
+						return "200 OK";
+					}
+					else{
+						return "304 Not Modified";
+					}
+				}else if(file.isFile()){
+					return "403 Forbidden";
+				}
+				
 				return "404 Not Found";
-			}
-			
-		// command other than GET	
-		}else{ 
-			return "501 Not Implemented";
+				
+			case "POST":
+			case "HEAD":
+			case "DELETE":
+			case "PUT":
+			case "LINK":
+			case "UNLINK": return "501 Not Implemented";
+			default: return "400 Bad Request";
 		}
 	}
 	
@@ -221,7 +271,7 @@ class RejectedHandler implements RejectedExecutionHandler{
 		
 		try(PrintWriter out = new PrintWriter(worker.client.getOutputStream(), true)){
 			
-			out.println("503 Service Unavailable");
+			out.println("HTTP/1.0 503 Service Unavailable");
 			out.println();
 			
 			worker.client.close();
