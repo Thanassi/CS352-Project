@@ -109,6 +109,7 @@ class ServerThread implements Runnable{
 			}
 			// timeout
 			catch(SocketTimeoutException e){
+				System.out.println("HTTP/1.0 408 Request Timeout");
 				out.println("HTTP/1.0 408 Request Timeout");
 				out.println();
 				
@@ -125,54 +126,79 @@ class ServerThread implements Runnable{
 			// correctly formatted GET input with correct file name
 			if(code.equals("200 OK")){
 				
-				out.println("HTTP/1.0 " + code);
-				
 				String path = "." + input[0].split(" ")[1];
+				System.out.println(path);
 				File file = new File(path);
 				
+				out.println("HTTP/1.0 " + code);
+				System.out.println("HTTP/1.0 " + code);
+				
 				String contentType = "Content-Type: " + getContentType(path);
+				System.out.println("returned from content type");
 				out.println(contentType);
+				System.out.println(contentType);
 				
 				String contentLength = "Content-Length: " + getContentLength(file);
 				out.println(contentLength);
-				
-				String contentEncoding = "Content-Encoding: " + getContentEncoding();
-				out.println(contentEncoding);
-				
-				String allow = "Allow: " + getAllow();
-				out.println(allow);
-				
-				String expire = "Expires: " + getExpires();
-				out.println(expire);
+				System.out.println(contentLength);
 				
 				String lastModified = "Last-Modified: " + getLastModified(file);
 				out.println(lastModified);
+				System.out.println(lastModified);
+				
+				String contentEncoding = "Content-Encoding: " + getContentEncoding();
+				out.println(contentEncoding);
+				System.out.println(contentEncoding);
+				
+				String allow = "Allow: " + getAllow();
+				out.println(allow);
+				System.out.println(allow);
+				
+				String expire = "Expires: " + getExpires();
+				out.println(expire);
+				System.out.println(expire);
+				
 				
 				out.println();
+				//out.println();
+				System.out.println();
 				
 				if(!input[0].split(" ")[0].equals("HEAD")){
+					out.println("payload");
+					
+					/*
 					if(contentType.substring(0, 4).equals("text")){
 						textData = printTextResource(path.substring(1));
+						out.println(textData);
+						System.out.println(textData);
 					}
 					else{
 						byteData = printByteResource(path.substring(1));
+						out.println(byteData);
+						System.out.println(byteData);
 					}
+					/*
 					if(textData == null && byteData == null){
 						throw new Exception();
 					}
+					*/
 				}
 
 			}
 			else if(code.equals("304 Not Modified")){				
 				out.println("HTTP/1.0 " + code);
+				System.out.println("HTTP/1.0 " + code);
 				out.println("Expires: " + getExpires());
+				System.out.println("Expires: " + getExpires());
 			}
 			//error code
 			else{
+				System.out.println("HTTP/1.0 " + code);
 				out.println("HTTP/1.0 " + code);
 			}
 			
 			out.println();
+			System.out.println();
 			out.flush();
 			
 			// wait quarter sec before closing thread
@@ -185,7 +211,9 @@ class ServerThread implements Runnable{
 		// something in our code broke
 		catch(Exception e){
 			out.println("HTTP/1.0 500 Internal Error");
+			System.out.println("HTTP/1.0 500 Internal Error");
 			out.println();
+			System.out.println();
 			
 			out.flush();
 			
@@ -214,6 +242,7 @@ class ServerThread implements Runnable{
 		if(input[1] != null && !input[1].isEmpty()){
 			if(input[1].length() > 18 && input[1].substring(0,19).equals("If-Modified-Since: ")){
 				date = input[1].substring(19);
+				System.out.println(date.toString());
 			}
 			else{
 				return "400 Bad Request";
@@ -243,21 +272,23 @@ class ServerThread implements Runnable{
 		Date headerTime = null, fileTime = null;
 		
 		// command is GET, POST, or HEAD
+		File file;
 		switch(inputTokens[0]){
 			case "GET":					
 			case "POST":
-			case "HEAD": 
-				
-				File file = new File("." + inputTokens[1]);
+				file = new File("." + inputTokens[1]);
 			
 				if(date != null){
 					try{
 						ZonedDateTime zdt = ZonedDateTime.parse(date, DateTimeFormatter.RFC_1123_DATE_TIME);
-						headerTime = Date.from(zdt.now().toInstant());
+						headerTime = Date.from(zdt.toInstant());
 					}catch(DateTimeParseException e){
 						headerTime = null;
 					}
 					fileTime = new Date(file.lastModified());
+					SimpleDateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+					formatter.setTimeZone(TimeZone.getTimeZone("EDT"));
+					formatter.format(fileTime);
 				}
 				
 				if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite()){
@@ -272,6 +303,19 @@ class ServerThread implements Runnable{
 				}
 				
 				return "404 Not Found";
+			case "HEAD": 
+				file = new File("." + inputTokens[1]);
+				
+				if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite()){
+					
+					return "200 OK";
+					
+				}else if(file.isFile()){
+					return "403 Forbidden";
+				}
+				
+				return "404 Not Found";
+				
 			case "DELETE":
 			case "PUT":
 			case "LINK":
@@ -316,9 +360,14 @@ class ServerThread implements Runnable{
 		try{
 			mimeType = Files.probeContentType(Paths.get(path));
 		}
-		catch(IOException e){
-			return "";
+		catch(Exception e){
+			return "application/octet-stream";
 		}
+		
+		if(mimeType == null){
+			return "application/octet-stream";
+		}
+		
 		switch(mimeType){
 			case "text/html": return "text/html";
 			case "text/plain": return "text/plain";
