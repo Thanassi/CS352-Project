@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 
 import java.nio.charset.Charset;
@@ -78,6 +79,7 @@ class ServerThread implements Runnable{
 	private PrintWriter out;
 	private BufferedReader in;
 	private DataOutputStream dOut;
+	private OutputStream os;
 	
 	// Constructs a thread for a socket
 	public ServerThread(Socket client){
@@ -95,9 +97,10 @@ class ServerThread implements Runnable{
 		// objects and cleanly exit the communication Thread
 		try{
 			try{
-				out = new PrintWriter(client.getOutputStream(), true);
+				os = client.getOutputStream();
+				out = new PrintWriter(os, true);
 				in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-				dOut = new DataOutputStream(client.getOutputStream());
+				dOut = new DataOutputStream(os);
 			}
 			catch(Exception e){
 				return;
@@ -175,10 +178,12 @@ class ServerThread implements Runnable{
 			else if(code.equals("304 Not Modified")){				
 				out.print("HTTP/1.0 " + code + "\r\n");
 				out.print("Expires: " + getExpires() + "\r\n");
+				out.print("\r\n");
 			}
 			//error code
 			else{
 				out.print("HTTP/1.0 " + code + "\r\n");
+				out.print("\r\n");
 			}
 			
 			out.flush();
