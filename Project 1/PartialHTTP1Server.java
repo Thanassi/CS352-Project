@@ -5,6 +5,7 @@ Alexey Smirnov
 */
 
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -76,6 +77,7 @@ class ServerThread implements Runnable{
 	
 	private PrintWriter out;
 	private BufferedReader in;
+	private DataOutputStream dOut;
 	
 	// Constructs a thread for a socket
 	public ServerThread(Socket client){
@@ -88,7 +90,6 @@ class ServerThread implements Runnable{
 		// Read string from the client, parse it as an HTTP 1.0 request
 		
 		String[] input = new String[2];
-		String data = null;
 		
 		// Once response is sent, flush the output streams, wait a quarter second, close down communication
 		// objects and cleanly exit the communication Thread
@@ -96,6 +97,7 @@ class ServerThread implements Runnable{
 			try{
 				out = new PrintWriter(client.getOutputStream(), true);
 				in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+				dOut = new DataOutputStream(client.getOutputStream());
 			}
 			catch(Exception e){
 				return;
@@ -112,9 +114,8 @@ class ServerThread implements Runnable{
 			}
 			// timeout
 			catch(SocketTimeoutException e){
-				System.out.println("HTTP/1.0 408 Request Timeout");
 				out.print("HTTP/1.0 408 Request Timeout" + "\r\n");
-				out.println();
+				out.print("\r\n");
 				
 				out.flush();
 				
@@ -126,65 +127,60 @@ class ServerThread implements Runnable{
 			
 			String code = processInput(input);
 			
-			// correctly formatted GET input with correct file name
+			// correctly formatted GET/POST/HEAD input with correct file name
 			if(code.equals("200 OK")){
 				
 				String path = "." + input[0].split(" ")[1];
-				System.out.println(path);
 				File file = new File(path);
 				
 				out.print("HTTP/1.0 " + code + "\r\n");
-				System.out.println("HTTP/1.0 " + code);
 				
 				String contentType = "Content-Type: " + getContentType(path);
 				out.print(contentType + "\r\n");
-				System.out.println(contentType);
 				
 				String contentLength = "Content-Length: " + getContentLength(file);
 				out.print(contentLength + "\r\n");
-				System.out.println(contentLength);
 				
 				String lastModified = "Last-Modified: " + getLastModified(file);
 				out.print(lastModified + "\r\n");
-				System.out.println(lastModified);
 				
 				String contentEncoding = "Content-Encoding: " + getContentEncoding();
 				out.print(contentEncoding + "\r\n");
-				System.out.println(contentEncoding);
 				
 				String allow = "Allow: " + getAllow();
 				out.print(allow + "\r\n");
-				System.out.println(allow);
 				
 				String expire = "Expires: " + getExpires();
 				out.print(expire + "\r\n");
-				System.out.println(expire);
-				
 				
 				out.print("\r\n");
-				//out.println();
-				System.out.println();
 				
+				//if not head command print contents of file
 				if(!input[0].split(" ")[0].equals("HEAD")){
-					data = getContent(path);
-					out.print(data + "\r\n");					
+					//if text, print as a string
+					if(contentType.substring(14, 18).equals("text")){
+						out.print(getTextContent(path) + "\r\n");
+					}
+					else{
+						//if not text, send bytes to client
+						byte[] byteData = getByteContent(path);
+						for(int i = 0; i < byteData.length; i++){
+							out.print(byteData[i]);
+						}
+						out.print("\r\n");
+					}
 				}
 
 			}
 			else if(code.equals("304 Not Modified")){				
 				out.print("HTTP/1.0 " + code + "\r\n");
-				System.out.println("HTTP/1.0 " + code);
 				out.print("Expires: " + getExpires() + "\r\n");
-				System.out.println("Expires: " + getExpires());
 			}
 			//error code
 			else{
-				System.out.println("HTTP/1.0 " + code);
 				out.print("HTTP/1.0 " + code + "\r\n");
 			}
 			
-			//out.println();
-			System.out.println();
 			out.flush();
 			
 			// wait quarter sec before closing thread
@@ -196,10 +192,8 @@ class ServerThread implements Runnable{
 		
 		// something in our code broke
 		catch(Exception e){
-			out.println("HTTP/1.0 500 Internal Error");
-			System.out.println("HTTP/1.0 500 Internal Error");
-			out.println();
-			System.out.println();
+			out.println("HTTP/1.0 500 Internal Error\r\n");
+			out.print("\r\n");
 			
 			out.flush();
 			
@@ -225,10 +219,10 @@ class ServerThread implements Runnable{
 		
 		String date = null;
 		
+		//find date if included
 		if(input[1] != null && !input[1].isEmpty()){
 			if(input[1].length() > 18 && input[1].substring(0,19).equals("If-Modified-Since: ")){
 				date = input[1].substring(19);
-				System.out.println(date.toString());
 			}
 		}
 		
@@ -239,12 +233,14 @@ class ServerThread implements Runnable{
 			return "400 Bad Request";
 		}
 		
+		//parse http version and check formatting
 		if(inputTokens[2].length() != 8 || !inputTokens[2].substring(0, 5).equals("HTTP/")
 			|| inputTokens[2].charAt(6) != '.' || !Character.isDigit(inputTokens[2].charAt(5))
 			|| !Character.isDigit(inputTokens[2].charAt(7))){
 			return "400 Bad Request";
 		}
 		
+		//digits for http version
 		int firstDigit = Character.getNumericValue(inputTokens[2].charAt(5));
 		int secondDigit = Character.getNumericValue(inputTokens[2].charAt(7));
 		
@@ -258,24 +254,30 @@ class ServerThread implements Runnable{
 		// GET, POST, or HEAD are implemented
 		File file;
 		switch(inputTokens[0]){
+			
+			//treat get and post the same
 			case "GET":					
 			case "POST":
-				file = new File("." + inputTokens[1]);
 			
+				file = new File("." + inputTokens[1]);
+				
 				if(date != null){
 					try{
+						//parse if-modified-since date from request
 						ZonedDateTime zdt = ZonedDateTime.parse(date, DateTimeFormatter.RFC_1123_DATE_TIME);
 						headerTime = Date.from(zdt.toInstant());
 					}catch(DateTimeParseException e){
 						headerTime = null;
 					}
+					//parse date from file lastModified
 					fileTime = new Date(file.lastModified());
 					SimpleDateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
 					formatter.setTimeZone(TimeZone.getTimeZone("EDT"));
 					formatter.format(fileTime);
 				}
-				
+				//check file permissions
 				if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite()){
+					//compare modified times if applicable
 					if(headerTime == null || fileTime == null || headerTime.compareTo(fileTime) < 0){
 						return "200 OK";
 					}
@@ -287,6 +289,7 @@ class ServerThread implements Runnable{
 				}
 				
 				return "404 Not Found";
+			//ignore any dates for HEAD
 			case "HEAD": 
 				file = new File("." + inputTokens[1]);
 				
@@ -299,24 +302,12 @@ class ServerThread implements Runnable{
 				}
 				
 				return "404 Not Found";
-				
+			//recognized commands but not implemented
 			case "DELETE":
 			case "PUT":
 			case "LINK":
 			case "UNLINK": return "501 Not Implemented";
 			default: return "400 Bad Request";
-		}
-	}
-	
-	// Print resource contents in one line
-	public String getContent(String path) throws IOException{
-		
-		try{
-			byte[] data = Files.readAllBytes(Paths.get(path));
-			return new String(data, Charset.defaultCharset());
-		}
-		catch(Exception e){
-			return null;
 		}
 	}
 	
@@ -332,7 +323,7 @@ class ServerThread implements Runnable{
 		if(mimeType == null){
 			return "application/octet-stream";
 		}
-		
+		//not all mimeTypes needed, default to octet-stream
 		switch(mimeType){
 			case "text/html": return "text/html";
 			case "text/plain": return "text/plain";
@@ -367,12 +358,37 @@ class ServerThread implements Runnable{
 		return "GET, POST, HEAD";
 	}
 	
+	//return time 24 hours after current time
 	public String getExpires(){
 		ZonedDateTime zdt = ZonedDateTime.now(ZoneId.of("GMT")).plusDays(1);
 		return DateTimeFormatter.RFC_1123_DATE_TIME.format(zdt);
 	}
 	
-	// sleep for given time in milliseconds
+	// return text resource contents as a string
+	public String getTextContent(String path) throws IOException{
+		
+		try{
+			byte[] data = Files.readAllBytes(Paths.get(path));
+			return new String(data, Charset.defaultCharset());
+		}
+		catch(Exception e){
+			return null;
+		}
+	}
+	
+	//return application/image as byte array
+	public byte[] getByteContent(String path) throws IOException{
+	
+		try{
+			return Files.readAllBytes(Paths.get(path));
+		}
+		catch(Exception e){
+			return null;
+		}
+	
+	}
+	
+	//sleep for given time in milliseconds
 	public void sleep(int time){
 		try{
 			TimeUnit.MILLISECONDS.sleep(time);
@@ -382,18 +398,21 @@ class ServerThread implements Runnable{
 		}
 	}
 	
-	// close socket and iostreams
+	//close socket and iostreams
 	public void closeObjects(){
 		try{
 			client.close();
 			in.close();
 			out.close();
+			dOut.close();
 		}catch(Exception e){
 			return;
 		}
 	}
 }
 
+//if more than 50 clients attempt to connect at once they are handled here
+//503 error code is thrown
 class RejectedHandler implements RejectedExecutionHandler{
 
 	@Override
