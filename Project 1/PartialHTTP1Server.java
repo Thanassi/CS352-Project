@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
+import java.nio.charset.Charset;
 import java.nio.file.Paths;
 import java.nio.file.Files;
 
@@ -83,10 +84,12 @@ class ServerThread implements Runnable{
 
 	// Run the thread
 	public void run(){
-		// Read a single string from the client, parse it as an HTTP 1.0 request
+		
+		// Read string from the client, parse it as an HTTP 1.0 request
+		
 		String[] input = new String[2];
-		String textData = null;
-		byte[] byteData = null;
+		String data = null;
+		
 		// Once response is sent, flush the output streams, wait a quarter second, close down communication
 		// objects and cleanly exit the communication Thread
 		try{
@@ -158,29 +161,13 @@ class ServerThread implements Runnable{
 				System.out.println(expire);
 				
 				
-				out.println();
+				out.print("\r\n");
 				//out.println();
 				System.out.println();
 				
 				if(!input[0].split(" ")[0].equals("HEAD")){
-					out.print("payload" + "\r\n");
-					
-					/*
-					if(contentType.substring(0, 4).equals("text")){
-						textData = printTextResource(path.substring(1));
-						out.println(textData);
-						System.out.println(textData);
-					}
-					else{
-						byteData = printByteResource(path.substring(1));
-						out.println(byteData);
-						System.out.println(byteData);
-					}
-					/*
-					if(textData == null && byteData == null){
-						throw new Exception();
-					}
-					*/
+					data = getContent(path);
+					out.print(data + "\r\n");					
 				}
 
 			}
@@ -196,7 +183,7 @@ class ServerThread implements Runnable{
 				out.print("HTTP/1.0 " + code + "\r\n");
 			}
 			
-			out.println();
+			//out.println();
 			System.out.println();
 			out.flush();
 			
@@ -223,7 +210,7 @@ class ServerThread implements Runnable{
 		}			
 	}
 	
-	// Reads in single string, parses, and sends back response according to the HTTP 1.0 protocol
+	// Reads in string, parses, and sends back response according to the HTTP 1.0 protocol
 	// Supports GET, POST, and HEAD commands
 	// Supports MIME types:
 	// text/(html and plain)
@@ -237,14 +224,11 @@ class ServerThread implements Runnable{
 		}
 		
 		String date = null;
-		// malformed input, 400
+		
 		if(input[1] != null && !input[1].isEmpty()){
 			if(input[1].length() > 18 && input[1].substring(0,19).equals("If-Modified-Since: ")){
 				date = input[1].substring(19);
 				System.out.println(date.toString());
-			}
-			else{
-				return "400 Bad Request";
 			}
 		}
 		
@@ -263,6 +247,7 @@ class ServerThread implements Runnable{
 		
 		int firstDigit = Character.getNumericValue(inputTokens[2].charAt(5));
 		int secondDigit = Character.getNumericValue(inputTokens[2].charAt(7));
+		
 		// if version number is greater than 1.0, then the version is higher than what we support
 		if(firstDigit > 1 || (firstDigit == 1 && secondDigit > 0)){
 			return "505 HTTP Version Not Supported";
@@ -270,7 +255,7 @@ class ServerThread implements Runnable{
 		
 		Date headerTime = null, fileTime = null;
 		
-		// command is GET, POST, or HEAD
+		// GET, POST, or HEAD are implemented
 		File file;
 		switch(inputTokens[0]){
 			case "GET":					
@@ -324,34 +309,15 @@ class ServerThread implements Runnable{
 	}
 	
 	// Print resource contents in one line
-	public String printTextResource(String path) throws IOException{
+	public String getContent(String path) throws IOException{
 		
-		try (BufferedReader br = new BufferedReader(new FileReader(path))) {
-			
-		   StringBuilder data = new StringBuilder();
-		   String line;
-		   
-		   while ((line = br.readLine()) != null) {
-			   data.append(line);
-		   }
-		   
-		   return data.toString();
+		try{
+			byte[] data = Files.readAllBytes(Paths.get(path));
+			return new String(data, Charset.defaultCharset());
 		}
 		catch(Exception e){
 			return null;
 		}
-	}
-	
-	public byte[] printByteResource(String path) throws IOException{
-			
-		try(BufferedReader br = new BufferedReader(new FileReader(path))){
-			
-			return null;
-			
-		}catch(Exception e){
-			return null;
-		}
-		
 	}
 	
 	public String getContentType(String path){
