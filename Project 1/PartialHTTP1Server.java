@@ -18,6 +18,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 
+import java.text.SimpleDateFormat;
+
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.LocalDate;
@@ -29,6 +31,8 @@ import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 public class PartialHTTP1Server{
 	
@@ -81,7 +85,8 @@ class ServerThread implements Runnable{
 	public void run(){
 		// Read a single string from the client, parse it as an HTTP 1.0 request
 		String[] input = new String[2];
-		String data;
+		String textData = null;
+		byte[] byteData = null;
 		// Once response is sent, flush the output streams, wait a quarter second, close down communication
 		// objects and cleanly exit the communication Thread
 		try{
@@ -122,12 +127,6 @@ class ServerThread implements Runnable{
 				
 				out.println("HTTP/1.0 " + code);
 				
-				/*
-				data = printResource(input[0].split(" ")[1]);
-				if(data == null){
-					throw new Exception();
-				}
-				*/
 				String path = "." + input[0].split(" ")[1];
 				File file = new File(path);
 				
@@ -137,21 +136,36 @@ class ServerThread implements Runnable{
 				String contentLength = "Content-Length: " + getContentLength(file);
 				out.println(contentLength);
 				
-				String contentEncoding = "Content-Encoding: " + getContentEncoding(contentType);
+				String contentEncoding = "Content-Encoding: " + getContentEncoding();
 				out.println(contentEncoding);
 				
-				String allow = "Allow: " + getAllow(file);
+				String allow = "Allow: " + getAllow();
 				out.println(allow);
 				
-				String expire = "Expires: " + getExpires(file);
+				String expire = "Expires: " + getExpires();
 				out.println(expire);
 				
 				String lastModified = "Last-Modified: " + getLastModified(file);
 				out.println(lastModified);
 				
 				out.println();
-				out.println();
+				
+				if(!input[0].split(" ")[0].equals("HEAD")){
+					if(contentType.substring(0, 4).equals("text")){
+						textData = printTextResource(path.substring(1));
+					}
+					else{
+						byteData = printByteResource(path.substring(1));
+					}
+					if(textData == null && byteData == null){
+						throw new Exception();
+					}
+				}
 
+			}
+			else if(code.equals("304 Not Modified")){				
+				out.println("HTTP/1.0 " + code);
+				out.println("Expires: " + getExpires());
 			}
 			//error code
 			else{
@@ -246,7 +260,7 @@ class ServerThread implements Runnable{
 					fileTime = new Date(file.lastModified());
 				}
 				
-				if(file.isFile() && file.canRead() && file.canWrite()){
+				if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite()){
 					if(headerTime == null || fileTime == null || headerTime.compareTo(fileTime) < 0){
 						return "200 OK";
 					}
@@ -267,7 +281,7 @@ class ServerThread implements Runnable{
 	}
 	
 	// Print resource contents in one line
-	public String printResource(String path) throws IOException{
+	public String printTextResource(String path) throws IOException{
 		
 		try (BufferedReader br = new BufferedReader(new FileReader(path))) {
 			
@@ -283,6 +297,18 @@ class ServerThread implements Runnable{
 		catch(Exception e){
 			return null;
 		}
+	}
+	
+	public byte[] printByteResource(String path) throws IOException{
+			
+		try(BufferedReader br = new BufferedReader(new FileReader(path))){
+			
+			return null;
+			
+		}catch(Exception e){
+			return null;
+		}
+		
 	}
 	
 	public String getContentType(String path){
@@ -313,26 +339,23 @@ class ServerThread implements Runnable{
 	public String getLastModified(File file){
 		
 		Date date = new Date(file.lastModified());
-		LocalDate local = date.toInstant().atZone(ZoneId.of("GMT")).toLocalDate();
-		DateTimeFormatter formatter = DateTimeFormatter.RFC_1123_DATE_TIME;
+		SimpleDateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+		formatter.setTimeZone(TimeZone.getTimeZone("GMT"));
 		
-		return local.format(formatter);
+		return formatter.format(date);
 	}
 	
-	public String getContentEncoding(String mimeType){
-		if(mimeType.equals("text/x-gzip")){
-			return "x-gzip";
-		} else {
-			return "identity";
-		}
+	public String getContentEncoding(){
+		return "identity";
 	}
 	
-	public String getAllow(File file){
+	public String getAllow(){
 		return "GET, POST, HEAD";
 	}
 	
-	public String getExpires(File file){
-		return "Tue, 29 Aug 2017 14:00:00 GMT";
+	public String getExpires(){
+		ZonedDateTime zdt = ZonedDateTime.now(ZoneId.of("GMT")).plusDays(1);
+		return DateTimeFormatter.RFC_1123_DATE_TIME.format(zdt);
 	}
 	
 	// sleep for given time in milliseconds
