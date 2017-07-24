@@ -273,7 +273,7 @@ class ServerThread implements Runnable{
 	}
 	
 	public String getContentLength(File file){
-		
+		return file.length();
 	}
 	
 	public String getLastModified(File file){
