@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
+import java.nio.file.Paths;
 import java.nio.file.Files;
 
 import java.net.ServerSocket;
@@ -19,7 +20,9 @@ import java.net.SocketTimeoutException;
 
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.time.ZoneId;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.RejectedExecutionHandler;
@@ -117,26 +120,38 @@ class ServerThread implements Runnable{
 			// correctly formatted GET input with correct file name
 			if(code.equals("200 OK")){
 				
-				data = printResource(input[0].substring(5));
+				out.println("HTTP/1.0 " + code);
+				
+				/*
+				data = printResource(input[0].split(" ")[1]);
 				if(data == null){
 					throw new Exception();
 				}
-				
+				*/
 				String path = "." + input[0].split(" ")[1];
 				File file = new File(path);
 				
-				String contentType = "Content-Type: " + getContentType(file);
-				String contentLength = "Content-Length: " + getContentLength(file);
-				String lastModified = "Last-Modified: " + getLastModified(file);
-				String contentEncoding = "Content-Encoding: " + getContentEncoding(file);
-				String allow = "Allow: " + getAllow(file);
-				String expire = "Expires: " + getExpires(file);
+				String contentType = "Content-Type: " + getContentType(path);
+				out.println(contentType);
 				
-				out.println("HTTP/1.0 " + code);
+				String contentLength = "Content-Length: " + getContentLength(file);
+				out.println(contentLength);
+				
+				String contentEncoding = "Content-Encoding: " + getContentEncoding(contentType);
+				out.println(contentEncoding);
+				
+				String allow = "Allow: " + getAllow(file);
+				out.println(allow);
+				
+				String expire = "Expires: " + getExpires(file);
+				out.println(expire);
+				
+				String lastModified = "Last-Modified: " + getLastModified(file);
+				out.println(lastModified);
+				
 				out.println();
 				out.println();
-				out.println();
-				out.println(data);
+
 			}
 			//error code
 			else{
@@ -231,7 +246,7 @@ class ServerThread implements Runnable{
 					fileTime = new Date(file.lastModified());
 				}
 				
-				if(file.isFile() && file.canRead()){
+				if(file.isFile() && file.canRead() && file.canWrite()){
 					if(headerTime == null || fileTime == null || headerTime.compareTo(fileTime) < 0){
 						return "200 OK";
 					}
@@ -271,7 +286,13 @@ class ServerThread implements Runnable{
 	}
 	
 	public String getContentType(String path){
-		String mimeType = Files.probeContentType(path);
+		String mimeType;
+		try{
+			mimeType = Files.probeContentType(Paths.get(path));
+		}
+		catch(IOException e){
+			return "";
+		}
 		switch(mimeType){
 			case "text/html": return "text/html";
 			case "text/plain": return "text/plain";
@@ -286,16 +307,21 @@ class ServerThread implements Runnable{
 	}
 	
 	public String getContentLength(File file){
-		return file.length();
+		return String.valueOf(file.length());
 	}
 	
 	public String getLastModified(File file){
-		return DateTimeFormatter.RFC_1123_DATE_TIME.format(file.lastModified());
+		
+		Date date = new Date(file.lastModified());
+		LocalDate local = date.toInstant().atZone(ZoneId.of("GMT")).toLocalDate();
+		DateTimeFormatter formatter = DateTimeFormatter.RFC_1123_DATE_TIME;
+		
+		return local.format(formatter);
 	}
 	
-	public String getContentEncoding(MimeType type){
-		if(type == "x-gzip"){
-			return "gzip";
+	public String getContentEncoding(String mimeType){
+		if(mimeType.equals("text/x-gzip")){
+			return "x-gzip";
 		} else {
 			return "identity";
 		}
