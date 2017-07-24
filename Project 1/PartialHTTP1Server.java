@@ -35,18 +35,20 @@ public class PartialHTTP1Server{
 			return;
 		}
 		
-		// Set the connection port for the socket
+		// Accept the port to listen on as args[0], parsed as int
 		int port = Integer.parseInt(args[0]);
 		
+		// 50 simultaneous threads at most; space for no more than 5 threads when idle
 		RejectedExecutionHandler handler = new RejectedHandler();
 		ThreadPoolExecutor pool = new ThreadPoolExecutor(5, 50, 0, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(), handler);
 		
 		Socket client;
 		Runnable worker;
 		
-		// Spawn a new thread to handle communication
+		// Construct a ServerSocket that accepts connections on the port specified in the command line argument
 		try(ServerSocket server = new ServerSocket(port)){
 			while(true){
+				// When a client connects to ServerSocket, hand off the created Socket to a Thread that handles communication
 				client = server.accept();
 				worker = new ServerThread(client);
 				pool.execute(worker);
@@ -72,10 +74,11 @@ class ServerThread implements Runnable{
 
 	// Run the thread
 	public void run(){
-		
+		// Read a single string from the client, parse it as an HTTP 1.0 request
 		String[] input = new String[2];
 		String data;
-		
+		// Once response is sent, flush the output streams, wait a quarter second, close down communication
+		// objects and cleanly exit the communication Thread
 		try{
 			try{
 				out = new PrintWriter(client.getOutputStream(), true);
@@ -151,7 +154,12 @@ class ServerThread implements Runnable{
 		}			
 	}
 	
-	// Reads in single string, parses, and sends back response
+	// Reads in single string, parses, and sends back response according to the HTTP 1.0 protocol
+	// Supports GET, POST, and HEAD commands
+	// Supports MIME types:
+	// text/(html and plain)
+	// image/(gif, jpeg and png)
+	// application/(octet-stream, pdf, x-gzip, zip)
 	public String processInput(String[] input) throws IOException{
 		
 		// blank input
@@ -160,6 +168,7 @@ class ServerThread implements Runnable{
 		}
 		
 		String date = null;
+		// malformed input, 400
 		if(input[1] != null && !input[1].isEmpty()){
 			if(input[1].length() > 18 && input[1].substring(0,19).equals("If-Modified-Since: ")){
 				date = input[1].substring(19);
@@ -184,7 +193,7 @@ class ServerThread implements Runnable{
 		
 		int firstDigit = Character.getNumericValue(inputTokens[2].charAt(5));
 		int secondDigit = Character.getNumericValue(inputTokens[2].charAt(7));
-		
+		// if version number is greater than 1.0, then the version is higher than what we support
 		if(firstDigit > 1 || (firstDigit == 1 && secondDigit > 0)){
 			return "505 HTTP Version Not Supported";
 		}
