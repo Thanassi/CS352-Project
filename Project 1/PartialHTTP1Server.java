@@ -16,6 +16,7 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.ZonedDateTime;
 
 import java.util.concurrent.TimeUnit;
@@ -110,14 +111,16 @@ class ServerThread implements Runnable{
 			
 			// correctly formatted GET input with correct file name
 			if(code.equals("200 OK")){
+				/*
 				data = printResource(input[0].substring(5));
 				if(data == null){
 					throw new Exception();
 				}
+				*/
 				out.println("HTTP/1.0 " + code);
 				out.println();
 				out.println();
-				out.println(data);
+				//out.println(data);
 			}
 			//error code
 			else{
@@ -194,11 +197,16 @@ class ServerThread implements Runnable{
 				File file = new File("." + inputTokens[1]);
 			
 				if(date != null){
-					headerTime = Date.from(ZonedDateTime.parse(date, DateTimeFormatter.RFC_1123_DATE_TIME).now().toInstant());
+					try{
+						ZonedDateTime zdt = ZonedDateTime.parse(date, DateTimeFormatter.RFC_1123_DATE_TIME);
+						headerTime = Date.from(zdt.now().toInstant());
+					}catch(DateTimeParseException e){
+						headerTime = null;
+					}
 					fileTime = new Date(file.lastModified());
 				}
 				
-				if(file.isFile() && file.canRead() && file.canWrite()){
+				if(file.isFile() && file.canRead()){
 					if(headerTime == null || fileTime == null || headerTime.compareTo(fileTime) < 0){
 						return "200 OK";
 					}
@@ -211,8 +219,8 @@ class ServerThread implements Runnable{
 				
 				return "404 Not Found";
 				
-			case "POST":
-			case "HEAD":
+			case "POST": return "200 OK";
+			case "HEAD": return "200 OK";
 			case "DELETE":
 			case "PUT":
 			case "LINK":
