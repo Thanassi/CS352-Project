@@ -110,7 +110,7 @@ class ServerThread implements Runnable{
 			// timeout
 			catch(SocketTimeoutException e){
 				System.out.println("HTTP/1.0 408 Request Timeout");
-				out.println("HTTP/1.0 408 Request Timeout");
+				out.print("HTTP/1.0 408 Request Timeout" + "\r\n");
 				out.println();
 				
 				out.flush();
@@ -130,32 +130,31 @@ class ServerThread implements Runnable{
 				System.out.println(path);
 				File file = new File(path);
 				
-				out.println("HTTP/1.0 " + code);
+				out.print("HTTP/1.0 " + code + "\r\n");
 				System.out.println("HTTP/1.0 " + code);
 				
 				String contentType = "Content-Type: " + getContentType(path);
-				System.out.println("returned from content type");
-				out.println(contentType);
+				out.print(contentType + "\r\n");
 				System.out.println(contentType);
 				
 				String contentLength = "Content-Length: " + getContentLength(file);
-				out.println(contentLength);
+				out.print(contentLength + "\r\n");
 				System.out.println(contentLength);
 				
 				String lastModified = "Last-Modified: " + getLastModified(file);
-				out.println(lastModified);
+				out.print(lastModified + "\r\n");
 				System.out.println(lastModified);
 				
 				String contentEncoding = "Content-Encoding: " + getContentEncoding();
-				out.println(contentEncoding);
+				out.print(contentEncoding + "\r\n");
 				System.out.println(contentEncoding);
 				
 				String allow = "Allow: " + getAllow();
-				out.println(allow);
+				out.print(allow + "\r\n");
 				System.out.println(allow);
 				
 				String expire = "Expires: " + getExpires();
-				out.println(expire);
+				out.print(expire + "\r\n");
 				System.out.println(expire);
 				
 				
@@ -164,7 +163,7 @@ class ServerThread implements Runnable{
 				System.out.println();
 				
 				if(!input[0].split(" ")[0].equals("HEAD")){
-					out.println("payload");
+					out.print("payload" + "\r\n");
 					
 					/*
 					if(contentType.substring(0, 4).equals("text")){
@@ -186,15 +185,15 @@ class ServerThread implements Runnable{
 
 			}
 			else if(code.equals("304 Not Modified")){				
-				out.println("HTTP/1.0 " + code);
+				out.print("HTTP/1.0 " + code + "\r\n");
 				System.out.println("HTTP/1.0 " + code);
-				out.println("Expires: " + getExpires());
+				out.print("Expires: " + getExpires() + "\r\n");
 				System.out.println("Expires: " + getExpires());
 			}
 			//error code
 			else{
 				System.out.println("HTTP/1.0 " + code);
-				out.println("HTTP/1.0 " + code);
+				out.print("HTTP/1.0 " + code + "\r\n");
 			}
 			
 			out.println();
