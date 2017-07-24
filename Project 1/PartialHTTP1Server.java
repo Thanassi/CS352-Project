@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
+import java.nio.file.Files;
+
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
@@ -268,8 +270,19 @@ class ServerThread implements Runnable{
 		}
 	}
 	
-	public String getContentType(File file){
-		
+	public String getContentType(String path){
+		String mimeType = Files.probeContentType(path);
+		switch(mimeType){
+			case "text/html": return "text/html";
+			case "text/plain": return "text/plain";
+			case "image/gif": return "image/gif";
+			case "image/jpeg": return "image/jpeg";
+			case "image/png": return "image/png";
+			case "application/pdf": return "application/pdf";
+			case "application/x-gzip": return "application/x-gzip";
+			case "application/zip": return "application/zip";
+			default: return "application/octet-stream";
+		}
 	}
 	
 	public String getContentLength(File file){
@@ -277,7 +290,7 @@ class ServerThread implements Runnable{
 	}
 	
 	public String getLastModified(File file){
-		
+		return DateTimeFormatter.RFC_1123_DATE_TIME.format(file.lastModified());
 	}
 	
 	public String getContentEncoding(MimeType type){
@@ -289,11 +302,11 @@ class ServerThread implements Runnable{
 	}
 	
 	public String getAllow(File file){
-		
+		return "GET, POST, HEAD";
 	}
 	
 	public String getExpires(File file){
-		
+		return "Tue, 29 Aug 2017 14:00:00 GMT";
 	}
 	
 	// sleep for given time in milliseconds
