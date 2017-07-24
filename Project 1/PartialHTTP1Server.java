@@ -280,8 +280,12 @@ class ServerThread implements Runnable{
 		
 	}
 	
-	public String getContentEncoding(File file){
-		
+	public String getContentEncoding(MimeType type){
+		if(type == "x-gzip"){
+			return "gzip";
+		} else {
+			return "identity";
+		}
 	}
 	
 	public String getAllow(File file){
