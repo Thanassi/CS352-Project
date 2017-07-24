@@ -211,9 +211,12 @@ class ServerThread implements Runnable{
 		
 		Date headerTime = null, fileTime = null;
 		
-		// command is GET
+		// command is GET, POST, or HEAD
 		switch(inputTokens[0]){
-			case "GET":				
+			case "GET":					
+			case "POST":
+			case "HEAD": 
+				
 				File file = new File("." + inputTokens[1]);
 			
 				if(date != null){
@@ -238,9 +241,6 @@ class ServerThread implements Runnable{
 				}
 				
 				return "404 Not Found";
-				
-			case "POST":
-			case "HEAD": return "200 OK";
 			case "DELETE":
 			case "PUT":
 			case "LINK":
