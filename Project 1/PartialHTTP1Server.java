@@ -114,16 +114,26 @@ class ServerThread implements Runnable{
 			
 			// correctly formatted GET input with correct file name
 			if(code.equals("200 OK")){
-				/*
+				
 				data = printResource(input[0].substring(5));
 				if(data == null){
 					throw new Exception();
 				}
-				*/
+				
+				String path = "." + input[0].split(" ")[1];
+				
+				String contentType = "Content-Type: " + getContentType(path);
+				String contentLength = "Content-Length: " + getContentLength(path);
+				String lastModified = "Last-Modified: " + getLastModified(path);
+				String contentEncoding = "Content-Encoding: " + getContentEncoding(path);
+				String allow = "Allow: " + getAllow(path);
+				String expire = "Expires: " + getExpires(path);
+				
 				out.println("HTTP/1.0 " + code);
 				out.println();
 				out.println();
-				//out.println(data);
+				out.println();
+				out.println(data);
 			}
 			//error code
 			else{
@@ -228,7 +238,7 @@ class ServerThread implements Runnable{
 				
 				return "404 Not Found";
 				
-			case "POST": return "200 OK";
+			case "POST":
 			case "HEAD": return "200 OK";
 			case "DELETE":
 			case "PUT":
@@ -255,6 +265,30 @@ class ServerThread implements Runnable{
 		catch(Exception e){
 			return null;
 		}
+	}
+	
+	public String getContentType(String path){
+		
+	}
+	
+	public String getContentLength(String path){
+		
+	}
+	
+	public String getLastModified(String path){
+		
+	}
+	
+	public String getContentEncoding(String path){
+		
+	}
+	
+	public String getAllow(String path){
+		
+	}
+	
+	public String getExpires(String path){
+		
 	}
 	
 	// sleep for given time in milliseconds
