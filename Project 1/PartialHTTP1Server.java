@@ -118,13 +118,14 @@ class ServerThread implements Runnable{
 				}
 				
 				String path = "." + input[0].split(" ")[1];
+				File file = new File(path);
 				
-				String contentType = "Content-Type: " + getContentType(path);
-				String contentLength = "Content-Length: " + getContentLength(path);
-				String lastModified = "Last-Modified: " + getLastModified(path);
-				String contentEncoding = "Content-Encoding: " + getContentEncoding(path);
-				String allow = "Allow: " + getAllow(path);
-				String expire = "Expires: " + getExpires(path);
+				String contentType = "Content-Type: " + getContentType(file);
+				String contentLength = "Content-Length: " + getContentLength(file);
+				String lastModified = "Last-Modified: " + getLastModified(file);
+				String contentEncoding = "Content-Encoding: " + getContentEncoding(file);
+				String allow = "Allow: " + getAllow(file);
+				String expire = "Expires: " + getExpires(file);
 				
 				out.println("HTTP/1.0 " + code);
 				out.println();
@@ -258,27 +259,27 @@ class ServerThread implements Runnable{
 		}
 	}
 	
-	public String getContentType(String path){
+	public String getContentType(File file){
 		
 	}
 	
-	public String getContentLength(String path){
+	public String getContentLength(File file){
 		
 	}
 	
-	public String getLastModified(String path){
+	public String getLastModified(File file){
 		
 	}
 	
-	public String getContentEncoding(String path){
+	public String getContentEncoding(File file){
 		
 	}
 	
-	public String getAllow(String path){
+	public String getAllow(File file){
 		
 	}
 	
-	public String getExpires(String path){
+	public String getExpires(File file){
 		
 	}
 	
