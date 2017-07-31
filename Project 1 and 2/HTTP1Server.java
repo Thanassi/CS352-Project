@@ -325,15 +325,31 @@ class ServerThread implements Runnable{
 			case "POST":
 				file = new File("." + inputTokens[1]);
 				
-				if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite()){
-					if(!getContentLength(file)){
-						return "411 Length Required";
-					} else if(!getContentType(file)){
-						return "500 Internal Server Error";	
-					} else {
-						return "200 OK";
+				if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite() && file.canExecute()){
+					boolean length = false, type = false;
+					for(int i = 1; i < input.size(); i++){
+						if(input.get(i).startsWith("Content-Type: ")){
+							try{
+								Integer.parseInt(input.get(i).substring(14));
+								length = true;
+							}catch(Exception e){
+								return "411 Length Required"
+							}
+						}
+						else if(input.get(i).startsWith("Content-Type: ")){
+							type = true;
+						}
 					}
-				}else if(file.isFile()){
+					if(length == false){
+						return "411 Length Required";
+					}
+					if(type == false){
+						return "500 Internal Error"
+					}
+					
+					return "200 OK";
+					
+				}else if(file.exists() && !file.isDirectory()){
 					return "403 Forbidden";
 				}
 				
