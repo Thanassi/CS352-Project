@@ -333,7 +333,15 @@ class ServerThread implements Runnable{
 			// Submits data to be processed to a specified resource
 			case "POST":
 				file = new File("." + inputTokens[1]);
-				
+				// check if file is CGI script
+				String extension = "";
+				int i = file.lastIndexOf('.');
+				if (i > 0) {
+					extension = fileName.substring(i+1);
+				}
+				if(extension != "cgi"){
+					return "405 Method Not Allowed"
+				}	
 				if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite() && file.canExecute()){
 					boolean length = false, type = false;
 					for(int i = 1; i < input.size(); i++){
