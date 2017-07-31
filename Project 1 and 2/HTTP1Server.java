@@ -335,9 +335,9 @@ class ServerThread implements Runnable{
 				file = new File("." + inputTokens[1]);
 				// check if file is CGI script
 				String extension = "";
-				int i = input.get(0).split(" ")[1].lastIndexOf('.');
+				int i = inputTokens[1].lastIndexOf('.');
 				if (i > 0) {
-					extension = fileName.substring(i+1);
+					extension = inputTokens[1].substring(i+1);
 				}
 				if(!extension.equals("cgi")){
 					return "405 Method Not Allowed";
