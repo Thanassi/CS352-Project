@@ -140,6 +140,7 @@ class ServerThread implements Runnable{
 				
 				// POST statement code - return specified environment variables
 				if(inputTokens[0] == "POST"){
+					// TODO: Set the CONTENT_LENGTH environment variable to the length of the decoded payload
 					String contentLength = "CONTENT_LENGTH: " + getContentLength(file);
 					out.print(contentLength + "\r\n");
 					
@@ -160,6 +161,7 @@ class ServerThread implements Runnable{
 						String httpUserAgent = "HTTP_USER_AGENT: " + getHttpUserAgent(file);
 						out.print(httpUserAgent + "\r\n");
 					}
+					// TODO: Send the decoded payload to the CGI script via STDIN
 				}else{
 					String contentType = "Content-Type: " + getContentType(path);
 					out.print(contentType + "\r\n");
@@ -320,6 +322,20 @@ class ServerThread implements Runnable{
 			// Submits data to be processed to a specified resource
 			case "POST":
 				file = new File("." + inputTokens[1]);
+				
+				if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite()){
+					if(!getContentLength(file)){
+						return "411 Length Required";
+					} else if(!getContentType(file)){
+						return "500 Internal Server Error";	
+					} else {
+						return "200 OK";
+					}
+				}else if(file.isFile()){
+					return "403 Forbidden";
+				}
+				
+				return "404 Not Found";
 				
 			//ignore any dates for HEAD
 			case "HEAD": 
