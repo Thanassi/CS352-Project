@@ -2,6 +2,7 @@
 Authors: 
 Thanassi Natsis
 Alexey Smirnov
+Project 2 - implement POST and support invoking server-side code using CGI
 */
 
 import java.io.BufferedReader;
@@ -37,7 +38,7 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
 
-public class PartialHTTP1Server{
+public class HTTP1Server{
 	
 	public static void main(String[] args){
 		
