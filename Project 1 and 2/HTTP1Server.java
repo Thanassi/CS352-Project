@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.net.InetAddress;
 
 import java.text.SimpleDateFormat;
 
@@ -41,6 +42,8 @@ import java.util.ArrayList;
 
 public class HTTP1Server{
 	
+	public int gPort;
+	public String gIp;
 	public static void main(String[] args){
 		
 		// Check if the number of inputs is correct
@@ -51,6 +54,12 @@ public class HTTP1Server{
 		
 		// Accept the port to listen on as args[0], parsed as int
 		int port = Integer.parseInt(args[0]);
+		gPort = port;
+		
+		// get IP from server
+		InetAddress ip;
+        ip = InetAddress.getLocalHost();
+		gIp = ip;
 		
 		// 50 simultaneous threads at most; space for no more than 5 threads when idle
 		RejectedExecutionHandler handler = new RejectedHandler();
@@ -409,14 +418,12 @@ class ServerThread implements Runnable{
 	}
 	
 	public String getServerName(File file){
-		String serverName;
-		// TODO: return IP of server
+		String serverName = gIp;
 		return serverName;
 	}
 	
 	public String getServerPort(File file){
-		String serverPort;
-		// TODO: return port of server
+		String serverPort = gPort;
 		return serverPort;
 	}
 	
