@@ -42,8 +42,9 @@ import java.util.ArrayList;
 
 public class HTTP1Server{
 	
-	public int gPort;
-	public String gIp;
+	public static int gPort;
+	public static String gIp;
+	
 	public static void main(String[] args){
 		
 		// Check if the number of inputs is correct
@@ -58,8 +59,15 @@ public class HTTP1Server{
 		
 		// get IP from server
 		InetAddress ip;
-        ip = InetAddress.getLocalHost();
-		gIp = ip;
+		
+		try{
+			ip = InetAddress.getLocalHost();
+		}catch(Exception e){
+			System.out.println("unknown host");
+			return;
+		}
+		
+		gIp = ip.getHostAddress();
 		
 		// 50 simultaneous threads at most; space for no more than 5 threads when idle
 		RejectedExecutionHandler handler = new RejectedHandler();
@@ -102,7 +110,7 @@ class ServerThread implements Runnable{
 		
 		// Read string from the client, parse it as an HTTP 1.0 request
 		
-		ArrayList<String> input = new ArrayList<>;
+		ArrayList<String> input = new ArrayList<>();
 		
 		// Once response is sent, flush the output streams, wait a quarter second, close down communication
 		// objects and cleanly exit the communication Thread
@@ -143,9 +151,11 @@ class ServerThread implements Runnable{
 			String[] inputTokens = input.get(0).split(" ");
 			// correctly formatted GET/HEAD input with correct file name
 			if(code.equals("200 OK")){
-				String path = "." + input[0].split(" ")[1];
+				String path = "." + input.get(0).split(" ")[1];
 				File file = new File(path);
 				out.print("HTTP/1.0 " + code + "\r\n");
+				
+				String contentType = "";
 				
 				// POST statement code - return specified environment variables
 				if(inputTokens[0].equals("POST")){
@@ -157,25 +167,25 @@ class ServerThread implements Runnable{
 					String scriptName = "SCRIPT_NAME: " + getScriptName(file);
 					out.print(scriptName + "\r\n");
 					
-					String serverName = "SERVER_NAME: " + getServerName(file);
+					String serverName = "SERVER_NAME: " + getServerName();
 					out.print(serverName + "\r\n");
 					
-					String serverPort = "SERVER_PORT: " + getServerPort(file);
+					String serverPort = "SERVER_PORT: " + getServerPort();
 					out.print(serverPort + "\r\n");
 					
 					String from, userAgent;
 					for(int i = 1; i < input.size(); i++){
-						if(input.get(i).startsWith("From: "){
+						if(input.get(i).startsWith("From: ")){
 							from = input.get(i).substring(6);
 						}
-						else if(input.get(i).startsWith("User-Agent: "){
+						else if(input.get(i).startsWith("User-Agent: ")){
 							userAgent = input.get(i).substring(12);
 						}
 					}
 					
 					// TODO: Send the decoded payload to the CGI script via STDIN
 				}else{
-					String contentType = "Content-Type: " + getContentType(path);
+					contentType = "Content-Type: " + getContentType(path);
 					out.print(contentType + "\r\n");
 					
 					String contentLength = "Content-Length: " + getContentLength(file);
@@ -335,9 +345,9 @@ class ServerThread implements Runnable{
 				file = new File("." + inputTokens[1]);
 				// check if file is CGI script
 				String extension = "";
-				int i = inputTokens[1].lastIndexOf('.');
-				if (i > 0) {
-					extension = inputTokens[1].substring(i+1);
+				int index = inputTokens[1].lastIndexOf('.');
+				if (index > 0) {
+					extension = inputTokens[1].substring(index+1);
 				}
 				if(!extension.equals("cgi")){
 					return "405 Method Not Allowed";
@@ -350,7 +360,7 @@ class ServerThread implements Runnable{
 								Integer.parseInt(input.get(i).substring(14));
 								length = true;
 							}catch(Exception e){
-								return "411 Length Required"
+								return "411 Length Required";
 							}
 						}
 						else if(input.get(i).startsWith("Content-Type: ")){
@@ -361,7 +371,7 @@ class ServerThread implements Runnable{
 						return "411 Length Required";
 					}
 					if(type == false){
-						return "500 Internal Error"
+						return "500 Internal Error";
 					}
 					
 					return "200 OK";
@@ -421,26 +431,16 @@ class ServerThread implements Runnable{
 	}
 	
 	public String getScriptName(File file){
-		String scriptName = file.path();
+		String scriptName = file.getPath();
 		return scriptName;
 	}
 	
-	public String getServerName(File file){
-		String serverName = gIp;
-		return serverName;
+	public String getServerName(){
+		return HTTP1Server.gIp;
 	}
 	
-	public String getServerPort(File file){
-		String serverPort = gPort;
-		return serverPort;
-	}
-	
-	public String getHttpFrom(File file){
-		return "From";
-	}
-	
-	public String getHttpUserAgent(File file){
-		return "User-Agent";
+	public int getServerPort(){
+		return HTTP1Server.gPort;
 	}
 	
 	public String getContentLength(File file){
