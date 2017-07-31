@@ -37,6 +37,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.ArrayList;
 
 public class HTTP1Server{
 	
@@ -130,35 +131,56 @@ class ServerThread implements Runnable{
 			}
 			
 			String code = processInput(input);
-			
-			// correctly formatted GET/POST/HEAD input with correct file name
+			String[] inputTokens = input.get(0).split(" ");
+			// correctly formatted GET/HEAD input with correct file name
 			if(code.equals("200 OK")){
-				
 				String path = "." + input[0].split(" ")[1];
 				File file = new File(path);
-				
 				out.print("HTTP/1.0 " + code + "\r\n");
 				
-				String contentType = "Content-Type: " + getContentType(path);
-				out.print(contentType + "\r\n");
-				
-				String contentLength = "Content-Length: " + getContentLength(file);
-				out.print(contentLength + "\r\n");
-				
-				String lastModified = "Last-Modified: " + getLastModified(file);
-				out.print(lastModified + "\r\n");
-				
-				String contentEncoding = "Content-Encoding: " + getContentEncoding();
-				out.print(contentEncoding + "\r\n");
-				
-				String allow = "Allow: " + getAllow();
-				out.print(allow + "\r\n");
-				
-				String expire = "Expires: " + getExpires();
-				out.print(expire + "\r\n");
-				
-				out.print("\r\n");
-				
+				// POST statement code - return specified environment variables
+				if(inputTokens[0] == "POST"){
+					String contentLength = "CONTENT_LENGTH: " + getContentLength(file);
+					out.print(contentLength + "\r\n");
+					
+					String scriptName = "SCRIPT_NAME: " + getScriptName(file);
+					out.print(scriptName + "\r\n");
+					
+					String serverName = "SERVER_NAME: " + getServerName(file);
+					out.print(serverName + "\r\n");
+					
+					String serverPort = "SERVER_PORT: " + getServerPort(file);
+					out.print(serverPort + "\r\n");
+					
+					// TODO: Check if post has header "From" or "User-Agent"
+					if("From"){
+						String httpFrom = "HTTP_FROM: " + getHttpFrom(file);
+						out.print(httpFrom + "\r\n");
+					} else if("User-Agent"){
+						String httpUserAgent = "HTTP_USER_AGENT: " + getHttpUserAgent(file);
+						out.print(httpUserAgent + "\r\n");
+					}
+				}else{
+					String contentType = "Content-Type: " + getContentType(path);
+					out.print(contentType + "\r\n");
+					
+					String contentLength = "Content-Length: " + getContentLength(file);
+					out.print(contentLength + "\r\n");
+					
+					String lastModified = "Last-Modified: " + getLastModified(file);
+					out.print(lastModified + "\r\n");
+					
+					String contentEncoding = "Content-Encoding: " + getContentEncoding();
+					out.print(contentEncoding + "\r\n");
+					
+					String allow = "Allow: " + getAllow();
+					out.print(allow + "\r\n");
+					
+					String expire = "Expires: " + getExpires();
+					out.print(expire + "\r\n");
+					
+					out.print("\r\n");
+				}	
 				//if not head command print contents of file
 				if(!input[0].split(" ")[0].equals("HEAD")){
 					//if text, print as a string
@@ -295,8 +317,9 @@ class ServerThread implements Runnable{
 				return "404 Not Found";
 			
 			// TODO: implement POST
+			// Submits data to be processed to a specified resource
 			case "POST":
-				// Submits data to be processed to a specified resource
+				file = new File("." + inputTokens[1]);
 				
 			//ignore any dates for HEAD
 			case "HEAD": 
@@ -344,6 +367,31 @@ class ServerThread implements Runnable{
 			case "application/zip": return "application/zip";
 			default: return "application/octet-stream";
 		}
+	}
+	
+	public String getScriptName(File file){
+		String scriptName = file.path();
+		return scriptName;
+	}
+	
+	public String getServerName(File file){
+		String serverName;
+		// TODO: return IP of server
+		return serverName;
+	}
+	
+	public String getServerPort(File file){
+		String serverPort;
+		// TODO: return port of server
+		return serverPort;
+	}
+	
+	public String getHttpFrom(File file){
+		return "From";
+	}
+	
+	public String getHttpUserAgent(File file){
+		return "User-Agent";
 	}
 	
 	public String getContentLength(File file){
