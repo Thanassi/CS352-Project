@@ -149,6 +149,7 @@ class ServerThread implements Runnable{
 			
 			String code = processInput(input);
 			String[] inputTokens = input.get(0).split(" ");
+			
 			// correctly formatted GET/HEAD input with correct file name
 			if(code.equals("200 OK")){
 				String path = "." + input.get(0).split(" ")[1];
@@ -246,7 +247,7 @@ class ServerThread implements Runnable{
 		
 		// something in our code broke
 		catch(Exception e){
-			out.println("HTTP/1.0 500 Internal Error\r\n");
+			out.print("HTTP/1.0 500 Internal Server Error\r\n");
 			out.print("\r\n");
 			
 			out.flush();
@@ -355,17 +356,19 @@ class ServerThread implements Runnable{
 					return "405 Method Not Allowed";
 				}	
 				if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite() && file.canExecute()){
+					
 					boolean length = false, type = false;
+
 					for(int i = 1; i < input.size(); i++){
-						if(input.get(i).startsWith("Content-Type: ")){
+						if(input.get(i).startsWith("Content-Length: ")){
 							try{
-								Integer.parseInt(input.get(i).substring(14));
+								Integer.parseInt(input.get(i).substring(16));
 								length = true;
 							}catch(Exception e){
 								return "411 Length Required";
 							}
 						}
-						else if(input.get(i).startsWith("Content-Type: ")){
+						else if(input.get(i).startsWith("Content-Type: ") && validType(input.get(i).substring(14))){
 							type = true;
 						}
 					}
@@ -373,7 +376,7 @@ class ServerThread implements Runnable{
 						return "411 Length Required";
 					}
 					if(type == false){
-						return "500 Internal Error";
+						return "500 Internal Server Error";
 					}
 					
 					return "200 OK";
@@ -404,6 +407,23 @@ class ServerThread implements Runnable{
 			case "UNLINK": return "501 Not Implemented";
 			default: return "400 Bad Request";
 		}
+	}
+	
+	public boolean validType(String type){
+			
+		switch(type){
+			case "text/html":
+			case "text/plain":
+			case "image/gif":
+			case "image/jpeg":
+			case "image/png":
+			case "application/pdf":
+			case "application/x-gzip":
+			case "application/zip":
+			case "application/octet-stream": return true;
+			default: return false;
+		}
+		
 	}
 	
 	public String getContentType(String path){
