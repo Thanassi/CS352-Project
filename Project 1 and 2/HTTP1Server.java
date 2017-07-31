@@ -140,6 +140,7 @@ class ServerThread implements Runnable{
 				
 				// POST statement code - return specified environment variables
 				if(inputTokens[0] == "POST"){
+					// TODO: Decode the payload according to RFC-3986
 					// TODO: Set the CONTENT_LENGTH environment variable to the length of the decoded payload
 					String contentLength = "CONTENT_LENGTH: " + getContentLength(file);
 					out.print(contentLength + "\r\n");
@@ -157,7 +158,9 @@ class ServerThread implements Runnable{
 					if("From"){
 						String httpFrom = "HTTP_FROM: " + getHttpFrom(file);
 						out.print(httpFrom + "\r\n");
-					} else if("User-Agent"){
+					}
+
+					if("User-Agent"){
 						String httpUserAgent = "HTTP_USER_AGENT: " + getHttpUserAgent(file);
 						out.print(httpUserAgent + "\r\n");
 					}
@@ -318,7 +321,6 @@ class ServerThread implements Runnable{
 				
 				return "404 Not Found";
 			
-			// TODO: implement POST
 			// Submits data to be processed to a specified resource
 			case "POST":
 				file = new File("." + inputTokens[1]);
