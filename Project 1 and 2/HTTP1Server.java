@@ -148,7 +148,7 @@ class ServerThread implements Runnable{
 				out.print("HTTP/1.0 " + code + "\r\n");
 				
 				// POST statement code - return specified environment variables
-				if(inputTokens[0] == "POST"){
+				if(inputTokens[0].equals("POST")){
 					// TODO: Decode the payload according to RFC-3986
 					// TODO: Set the CONTENT_LENGTH environment variable to the length of the decoded payload
 					String contentLength = "CONTENT_LENGTH: " + getContentLength(file);
@@ -163,16 +163,16 @@ class ServerThread implements Runnable{
 					String serverPort = "SERVER_PORT: " + getServerPort(file);
 					out.print(serverPort + "\r\n");
 					
-					// TODO: Check if post has header "From" or "User-Agent"
-					if("From"){
-						String httpFrom = "HTTP_FROM: " + getHttpFrom(file);
-						out.print(httpFrom + "\r\n");
+					String from, userAgent;
+					for(int i = 1; i < input.size(); i++){
+						if(input.get(i).startsWith("From: "){
+							from = input.get(i).substring(6);
+						}
+						else if(input.get(i).startsWith("User-Agent: "){
+							userAgent = input.get(i).substring(12);
+						}
 					}
-
-					if("User-Agent"){
-						String httpUserAgent = "HTTP_USER_AGENT: " + getHttpUserAgent(file);
-						out.print(httpUserAgent + "\r\n");
-					}
+					
 					// TODO: Send the decoded payload to the CGI script via STDIN
 				}else{
 					String contentType = "Content-Type: " + getContentType(path);
@@ -196,7 +196,7 @@ class ServerThread implements Runnable{
 					out.print("\r\n");
 				}	
 				//if not head command print contents of file
-				if(!input[0].split(" ")[0].equals("HEAD")){
+				if(input.get(0).split(" ")[0].equals("GET")){
 					//if text, print as a string
 					if(contentType.substring(14, 18).equals("text")){
 						out.print(getTextContent(path) + "\r\n");
