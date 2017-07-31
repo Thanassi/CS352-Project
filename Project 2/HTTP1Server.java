@@ -160,6 +160,8 @@ class ServerThread implements Runnable{
 				
 				// POST statement code - return specified environment variables
 				if(inputTokens[0].equals("POST")){
+					// execute the code named in the cgi request url, capture all the output(STDOUT) and send it as text response
+					// if script runs to end but there's no output, return "204 No Content"
 					// TODO: Decode the payload according to RFC-3986
 					// TODO: Set the CONTENT_LENGTH environment variable to the length of the decoded payload
 					String contentLength = "CONTENT_LENGTH: " + getContentLength(file);
