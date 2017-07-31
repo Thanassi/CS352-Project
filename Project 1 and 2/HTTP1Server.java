@@ -92,7 +92,7 @@ class ServerThread implements Runnable{
 		
 		// Read string from the client, parse it as an HTTP 1.0 request
 		
-		String[] input = new String[2];
+		ArrayList<String> input = new ArrayList<>;
 		
 		// Once response is sent, flush the output streams, wait a quarter second, close down communication
 		// objects and cleanly exit the communication Thread
@@ -110,10 +110,10 @@ class ServerThread implements Runnable{
 			// Timeout in 3 seconds if no input is given
 			try{
 				client.setSoTimeout(3000);
-				input[0] = in.readLine();
+				input.add(in.readLine());
 				
-				if(in.ready()){
-					input[1] = in.readLine();
+				while(in.ready()){
+					input.add(in.readLine());
 				}
 			}
 			// timeout
@@ -216,23 +216,14 @@ class ServerThread implements Runnable{
 	// text/(html and plain)
 	// image/(gif, jpeg and png)
 	// application/(octet-stream, pdf, x-gzip, zip)
-	public String processInput(String[] input) throws IOException{
+	public String processInput(ArrayList<String> input) throws IOException{
 		
 		// blank input
-		if(input == null || input[0] == null){
+		if(input == null || input.get(0) == null){
 			return "400 Bad Request";
 		}
-		
-		String date = null;
-		
-		//find date if included
-		if(input[1] != null && !input[1].isEmpty()){
-			if(input[1].length() > 18 && input[1].substring(0,19).equals("If-Modified-Since: ")){
-				date = input[1].substring(19);
-			}
-		}
-		
-		String[] inputTokens = input[0].split(" ");
+				
+		String[] inputTokens = input.get(0).split(" ");
 		
 		// improper formatting
 		if(inputTokens.length != 3){
@@ -255,6 +246,7 @@ class ServerThread implements Runnable{
 			return "505 HTTP Version Not Supported";
 		}
 		
+		String date = null;
 		Date headerTime = null, fileTime = null;
 		
 		// GET, POST, or HEAD are implemented
@@ -262,9 +254,15 @@ class ServerThread implements Runnable{
 		switch(inputTokens[0]){
 			
 			//treat get and post the same
-			case "GET":					
-			case "POST":
-			
+			case "GET":	
+				
+				//find date if included
+				if(input.get(1) != null && !input.get(1).isEmpty()){
+					if(input.get(1).length() > 18 && input.get(1).substring(0,19).equals("If-Modified-Since: ")){
+						date = input.get(1).substring(19);
+					}
+				}
+				
 				file = new File("." + inputTokens[1]);
 				
 				if(date != null){
@@ -295,6 +293,10 @@ class ServerThread implements Runnable{
 				}
 				
 				return "404 Not Found";
+				
+			case "POST":
+				
+				
 			//ignore any dates for HEAD
 			case "HEAD": 
 				file = new File("." + inputTokens[1]);
