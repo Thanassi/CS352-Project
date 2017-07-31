@@ -261,10 +261,8 @@ class ServerThread implements Runnable{
 		File file;
 		switch(inputTokens[0]){
 			
-			//treat get and post the same
-			case "GET":					
-			case "POST":
-			
+			// Requests data from a specified resource
+	  		case "GET":					
 				file = new File("." + inputTokens[1]);
 				
 				if(date != null){
@@ -295,6 +293,11 @@ class ServerThread implements Runnable{
 				}
 				
 				return "404 Not Found";
+			
+			// TODO: implement POST
+			case "POST":
+				// Submits data to be processed to a specified resource
+				
 			//ignore any dates for HEAD
 			case "HEAD": 
 				file = new File("." + inputTokens[1]);
