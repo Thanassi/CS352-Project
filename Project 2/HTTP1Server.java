@@ -156,60 +156,30 @@ class ServerThread implements Runnable{
 				File file = new File(path);
 				out.print("HTTP/1.0 " + code + "\r\n");
 				
-				String contentType = "";
+				String contentType = "Content-Type: " + getContentType(path);
+				out.print(contentType + "\r\n");
 				
-				// POST statement code - return specified environment variables
-				if(inputTokens[0].equals("POST")){
-					// execute the code named in the cgi request url, capture all the output(STDOUT) and send it as text response
-					// if script runs to end but there's no output, return "204 No Content"
-					// TODO: Decode the payload according to RFC-3986
-					// TODO: Set the CONTENT_LENGTH environment variable to the length of the decoded payload
-					String contentLength = "CONTENT_LENGTH: " + getContentLength(file);
-					out.print(contentLength + "\r\n");
-					
-					String scriptName = "SCRIPT_NAME: " + getScriptName(file);
-					out.print(scriptName + "\r\n");
-					
-					String serverName = "SERVER_NAME: " + getServerName();
-					out.print(serverName + "\r\n");
-					
-					String serverPort = "SERVER_PORT: " + getServerPort();
-					out.print(serverPort + "\r\n");
-					
-					String from, userAgent;
-					for(int i = 1; i < input.size(); i++){
-						if(input.get(i).startsWith("From: ")){
-							from = input.get(i).substring(6);
-						}
-						else if(input.get(i).startsWith("User-Agent: ")){
-							userAgent = input.get(i).substring(12);
-						}
-					}
-					
-					// TODO: Send the decoded payload to the CGI script via STDIN
-				}else{
-					contentType = "Content-Type: " + getContentType(path);
-					out.print(contentType + "\r\n");
-					
-					String contentLength = "Content-Length: " + getContentLength(file);
-					out.print(contentLength + "\r\n");
-					
+				String contentLength = "Content-Length: " + getContentLength(file);
+				out.print(contentLength + "\r\n");
+				
+				if(!inputTokens[0].equals("POST")){
 					String lastModified = "Last-Modified: " + getLastModified(file);
 					out.print(lastModified + "\r\n");
+				}
+				
+				String contentEncoding = "Content-Encoding: " + getContentEncoding();
+				out.print(contentEncoding + "\r\n");
+				
+				String allow = "Allow: " + getAllow();
+				out.print(allow + "\r\n");
+				
+				String expire = "Expires: " + getExpires();
+				out.print(expire + "\r\n");
+				
+				out.print("\r\n");
 					
-					String contentEncoding = "Content-Encoding: " + getContentEncoding();
-					out.print(contentEncoding + "\r\n");
-					
-					String allow = "Allow: " + getAllow();
-					out.print(allow + "\r\n");
-					
-					String expire = "Expires: " + getExpires();
-					out.print(expire + "\r\n");
-					
-					out.print("\r\n");
-				}	
 				//if not head command print contents of file
-				if(input.get(0).split(" ")[0].equals("GET")){
+				if(inputTokens[0].equals("GET")){
 					//if text, print as a string
 					if(contentType.substring(14, 18).equals("text")){
 						out.print(getTextContent(path) + "\r\n");
@@ -357,13 +327,13 @@ class ServerThread implements Runnable{
 				}	
 				if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite() && file.canExecute()){
 					
-					boolean length = false, type = false;
+					int length = -1;
+					boolean type = false;
 
 					for(int i = 1; i < input.size(); i++){
 						if(input.get(i).startsWith("Content-Length: ")){
 							try{
-								Integer.parseInt(input.get(i).substring(16));
-								length = true;
+								length = Integer.parseInt(input.get(i).substring(16));
 							}catch(Exception e){
 								return "411 Length Required";
 							}
@@ -372,9 +342,14 @@ class ServerThread implements Runnable{
 							type = true;
 						}
 					}
-					if(length == false){
+					
+					if(length == -1){
 						return "411 Length Required";
 					}
+					else if(length == 0){
+						return "204 No Content";
+					}
+					
 					if(type == false){
 						return "500 Internal Server Error";
 					}
