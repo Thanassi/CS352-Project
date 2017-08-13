@@ -5,23 +5,29 @@ Alexey Smirnov
 Project 2 - implement POST and support invoking server-side code using CGI
 */
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 
-import java.nio.charset.Charset;
-import java.nio.file.Paths;
-import java.nio.file.Files;
+import java.lang.Process;
+import java.lang.Runtime;
 
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.InetAddress;
+import java.net.URLDecoder;
+
+import java.nio.charset.Charset;
+import java.nio.file.Paths;
+import java.nio.file.Files;
 
 import java.text.SimpleDateFormat;
 
@@ -97,8 +103,12 @@ class ServerThread implements Runnable{
 	
 	private PrintWriter out;
 	private BufferedReader in;
-	private DataOutputStream dOut;
 	private OutputStream os;
+	private InputStream is;
+	
+	private int postLength;
+	private String from = null;
+	private String userAgent = null;
 	
 	// Constructs a thread for a socket
 	public ServerThread(Socket client){
@@ -118,8 +128,8 @@ class ServerThread implements Runnable{
 			try{
 				os = client.getOutputStream();
 				out = new PrintWriter(os, true);
-				in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-				dOut = new DataOutputStream(os);
+				is = client.getInputStream();
+				in = new BufferedReader(new InputStreamReader(is));
 			}
 			catch(Exception e){
 				return;
@@ -136,8 +146,7 @@ class ServerThread implements Runnable{
 			}
 			// timeout
 			catch(SocketTimeoutException e){
-				out.print("HTTP/1.0 408 Request Timeout" + "\r\n");
-				out.print("\r\n");
+				out.print("HTTP/1.0 408 Request Timeout\r\n\r\n");
 				
 				out.flush();
 				
@@ -154,56 +163,25 @@ class ServerThread implements Runnable{
 			if(code.equals("200 OK")){
 				String path = "." + input.get(0).split(" ")[1];
 				File file = new File(path);
-				out.print("HTTP/1.0 " + code + "\r\n");
 				
-				String contentType = "Content-Type: " + getContentType(path);
-				out.print(contentType + "\r\n");
-				
-				String contentLength = "Content-Length: " + getContentLength(file);
-				out.print(contentLength + "\r\n");
-				
-				if(!inputTokens[0].equals("POST")){
-					String lastModified = "Last-Modified: " + getLastModified(file);
-					out.print(lastModified + "\r\n");
-				}
-				
-				String contentEncoding = "Content-Encoding: " + getContentEncoding();
-				out.print(contentEncoding + "\r\n");
-				
-				String allow = "Allow: " + getAllow();
-				out.print(allow + "\r\n");
-				
-				String expire = "Expires: " + getExpires();
-				out.print(expire + "\r\n");
-				
-				out.print("\r\n");
-					
 				//if not head command print contents of file
 				if(inputTokens[0].equals("GET")){
-					//if text, print as a string
-					if(contentType.substring(14, 18).equals("text")){
-						out.print(getTextContent(path) + "\r\n");
-					}
-					else{
-						//if not text, send bytes to client
-						byte[] byteData = getByteContent(path);
-						for(int i = 0; i < byteData.length; i++){
-							out.print(byteData[i]);
-						}
-						out.print("\r\n");
-					}
+					getRequest(inputTokens, path, file);
 				}
-
+				else if(inputTokens[0].equals("POST")){
+					postRequest(inputTokens, path, file);
+				}
 			}
 			else if(code.equals("304 Not Modified")){				
 				out.print("HTTP/1.0 " + code + "\r\n");
-				out.print("Expires: " + getExpires() + "\r\n");
-				out.print("\r\n");
+				System.out.print("HTTP/1.0 " + code + "\r\n");
+				out.print("Expires: " + getExpires() + "\r\n\r\n");
+				System.out.print("Expires: " + getExpires() + "\r\n\r\n");
 			}
 			//error code
 			else{
-				out.print("HTTP/1.0 " + code + "\r\n");
-				out.print("\r\n");
+				out.print("HTTP/1.0 " + code + "\r\n\r\n");
+				System.out.print("HTTP/1.0 " + code + "\r\n\r\n");
 			}
 			
 			out.flush();
@@ -217,8 +195,7 @@ class ServerThread implements Runnable{
 		
 		// something in our code broke
 		catch(Exception e){
-			out.print("HTTP/1.0 500 Internal Server Error\r\n");
-			out.print("\r\n");
+			out.print("HTTP/1.0 500 Internal Server Error\r\n\r\n");
 			
 			out.flush();
 			
@@ -227,6 +204,188 @@ class ServerThread implements Runnable{
 			closeObjects();
 			return;
 		}			
+	}
+	
+	public void getRequest(String[] inputTokens, String path, File file){
+		
+		out.print("HTTP/1.0 200 OK\r\n");
+		System.out.print("HTTP/1.0 200 OK\r\n");
+		
+		if(!inputTokens[0].equals("POST")){
+			String lastModified = "Last-Modified: " + getLastModified(file) + "\r\n";
+			out.print(lastModified);
+			System.out.print(lastModified);
+		}
+		
+		String expire = "Expires: " + getExpires() + "\r\n";
+		out.print(expire);
+		System.out.print(expire);
+		
+		String allow = "Allow: " + getAllow() + "\r\n";
+		out.print(allow);
+		System.out.print(allow);
+		
+		String contentType = "Content-Type: " + getContentType(path) + "\r\n";
+		out.print(contentType);
+		System.out.print(contentType);
+		
+		String contentEncoding = "Content-Encoding: " + getContentEncoding() + "\r\n";
+		out.print(contentEncoding);
+		System.out.print(contentEncoding);
+		
+		String contentLength = "Content-Length: " + getContentLength(file) + "\r\n\r\n";
+		out.print(contentLength);
+		System.out.print(contentLength);
+		
+		//if text, print as a string
+		try{
+			if(contentType.substring(14, 18).equals("text")){
+				out.print(getTextContent(path) + "\r\n");
+				System.out.print(getTextContent(path) + "\r\n");
+			}
+			else{
+				out.flush();
+				//if not text, send bytes to client
+				byte[] byteData = new byte[1024];
+				int count = 0;
+				
+				try(BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file))){
+					while(true){
+						count = bis.read(byteData);
+						if(count > 0){
+							os.write(byteData, 0, count);
+							os.flush();
+						}
+						else{
+							break;
+						}
+					}
+				}
+				
+				out.print("\r\n");
+				System.out.print("\r\n");
+			}
+		}
+		catch(Exception e){
+			return;
+		}
+	}
+	
+	public void postRequest(String[] inputTokens, String path, File file){
+		
+		System.out.println("in post request");
+		
+		ArrayList<String> envList = new ArrayList<>();
+		
+		System.out.println("post length = " + postLength);
+		byte[] postByteArr = new byte[postLength];
+		String content;
+		try{
+			System.out.println("attempting to read");
+			is.read(postByteArr, 0, postLength);
+			System.out.println("making new string");
+			content = new String(postByteArr, "ISO-8859-1");
+			System.out.println("content string created");
+		}
+		catch(Exception e){
+			return;
+		}
+		
+		envList.add("CONTENT_LENGTH=" + content.length());
+		envList.add("SCRIPT_NAME=" + inputTokens[1]);
+		envList.add("SERVER_NAME=" + getServerName());
+		envList.add("SERVER_PORT=" + getServerPort());
+		
+		if(from != null){
+			envList.add("HTTP_FROM=" + from);
+		}
+		
+		if(userAgent != null){
+			envList.add("HTTP_USER_AGENT=" + userAgent);
+		}
+		
+		String[] envArr = envList.toArray(new String[0]);
+		Runtime run = Runtime.getRuntime();
+		Process proc;
+		
+		String script = "";
+		
+		System.out.println("created envArr");
+		
+		try{
+			proc = run.exec(file.getCanonicalPath(), envArr);
+			
+			byte[] buf = new byte[1024];
+			int count = 0;
+			
+			OutputStream cgi = proc.getOutputStream();
+			
+			System.out.println("checking content length");
+			if(content.length() > 0){
+				content = URLDecoder.decode(content, "UTF-8");
+				cgi.write(content.getBytes());
+				cgi.flush();
+				cgi.close();
+			}
+			
+			try{
+				System.out.println("in 2nd try");
+				InputStream cIn = proc.getInputStream();
+				while(true){
+					count = cIn.read(buf);
+					if(count > 0){
+						String temp = new String(buf);
+						temp = temp.trim();
+						script = script + temp;
+					}
+					else{
+						break;
+					}
+				}
+				script.trim();
+				cIn.close();
+				
+				System.out.println("checking script length");
+				
+				if(script.length() > 0){
+					out.print("HTTP/1.0 200 OK\r\n");
+					System.out.print("HTTP/1.0 200 OK\r\n");
+					
+					String expire = "Expires: " + getExpires() + "\r\n";
+					out.print(expire);
+					System.out.print(expire);
+					
+					String allow = "Allow: " + getAllow() + "\r\n";
+					out.print(allow);
+					System.out.print(allow);
+					
+					String contentType = "Content-Type: text/html\r\n";
+					out.print(contentType);
+					System.out.print(contentType);
+					
+					String contentEncoding = "Content-Encoding: " + getContentEncoding() + "\r\n";
+					out.print(contentEncoding);
+					System.out.print(contentEncoding);
+					
+					String contentLength = "Content-Length: " + script.length() + "\r\n";
+					out.print(contentLength);
+					System.out.print(contentLength);
+					
+					out.print(script + "\r\n");
+				}
+				else{
+					out.print("HTTP/1.0 204 No Content\r\n\r\n");
+				}
+			}
+			catch(Exception e){
+				return;
+			}
+			
+		}
+		catch(Exception e){
+			return;
+		}
+		
 	}
 	
 	// Reads in string, parses, and sends back response according to the HTTP 1.0 protocol
@@ -322,9 +481,11 @@ class ServerThread implements Runnable{
 				if (index > 0) {
 					extension = inputTokens[1].substring(index+1);
 				}
+				
 				if(!extension.equals("cgi")){
 					return "405 Method Not Allowed";
-				}	
+				}
+							
 				if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite() && file.canExecute()){
 					
 					int length = -1;
@@ -341,6 +502,12 @@ class ServerThread implements Runnable{
 						else if(input.get(i).equals("Content-Type: application/x-www-form-urlencoded")){
 							type = true;
 						}
+						else if(input.get(i).startsWith("From: ")){
+							from = input.get(i).substring(6);
+						}
+						else if(input.get(i).startsWith("User-Agent: ")){
+							userAgent = input.get(i).substring(12);
+						}
 					}
 					
 					if(length == -1){
@@ -353,6 +520,8 @@ class ServerThread implements Runnable{
 					if(type == false){
 						return "500 Internal Server Error";
 					}
+					
+					postLength = length;
 					
 					return "200 OK";
 					
@@ -416,11 +585,11 @@ class ServerThread implements Runnable{
 	}
 	
 	public String getServerName(){
-		return HTTP1Server.gIp;
+		return HTTP1ServerASP.gIp;
 	}
 	
 	public int getServerPort(){
-		return HTTP1Server.gPort;
+		return HTTP1ServerASP.gPort;
 	}
 	
 	public String getContentLength(File file){
@@ -461,19 +630,7 @@ class ServerThread implements Runnable{
 			return null;
 		}
 	}
-	
-	//return application/image as byte array
-	public byte[] getByteContent(String path) throws IOException{
-	
-		try{
-			return Files.readAllBytes(Paths.get(path));
-		}
-		catch(Exception e){
-			return null;
-		}
-	
-	}
-	
+
 	//sleep for given time in milliseconds
 	public void sleep(int time){
 		try{
@@ -490,7 +647,6 @@ class ServerThread implements Runnable{
 			client.close();
 			in.close();
 			out.close();
-			dOut.close();
 		}catch(Exception e){
 			return;
 		}
