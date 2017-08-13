@@ -172,6 +172,9 @@ class ServerThread implements Runnable{
 				else if(inputTokens[0].equals("POST")){
 					postRequest(inputTokens, path, file);
 				}
+				else{
+					headRequest(path, file);
+				}
 			}
 			else if(code.equals("304 Not Modified")){				
 				out.print("HTTP/1.0 " + code + "\r\n");
@@ -212,11 +215,9 @@ class ServerThread implements Runnable{
 		out.print("HTTP/1.0 200 OK\r\n");
 		System.out.print("HTTP/1.0 200 OK\r\n");
 		
-		if(!inputTokens[0].equals("POST")){
-			String lastModified = "Last-Modified: " + getLastModified(file) + "\r\n";
-			out.print(lastModified);
-			System.out.print(lastModified);
-		}
+		String lastModified = "Last-Modified: " + getLastModified(file) + "\r\n";
+		out.print(lastModified);
+		System.out.print(lastModified);
 		
 		String expire = "Expires: " + getExpires() + "\r\n";
 		out.print(expire);
@@ -377,7 +378,36 @@ class ServerThread implements Runnable{
 		catch(Exception e){
 			return;
 		}
+	}
+	
+	public void headRequest(String path, File file){
 		
+		out.print("HTTP/1.0 200 OK\r\n");
+		System.out.print("HTTP/1.0 200 OK\r\n");
+		
+		String lastModified = "Last-Modified: " + getLastModified(file) + "\r\n";
+		out.print(lastModified);
+		System.out.print(lastModified);
+		
+		String expire = "Expires: " + getExpires() + "\r\n";
+		out.print(expire);
+		System.out.print(expire);
+		
+		String allow = "Allow: " + getAllow() + "\r\n";
+		out.print(allow);
+		System.out.print(allow);
+		
+		String contentType = "Content-Type: " + getContentType(path) + "\r\n";
+		out.print(contentType);
+		System.out.print(contentType);
+		
+		String contentEncoding = "Content-Encoding: " + getContentEncoding() + "\r\n";
+		out.print(contentEncoding);
+		System.out.print(contentEncoding);
+		
+		String contentLength = "Content-Length: " + getContentLength(file) + "\r\n\r\n";
+		out.print(contentLength);
+		System.out.print(contentLength);
 	}
 	
 	// Reads in string, parses, and sends back response according to the HTTP 1.0 protocol
