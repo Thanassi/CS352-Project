@@ -294,15 +294,12 @@ class ServerThread implements Runnable{
 		}
 		
 		String[] envArr = envList.toArray(new String[0]);
-		Runtime run = Runtime.getRuntime();
-		Process proc;
-		
 		String script = "";
 		
 		System.out.println("created envArr");
 		
 		try{
-			proc = run.exec(file.getPath(), envArr);
+			Process proc = Runtime.getRuntime().exec(file.getPath(), envArr);
 			
 			byte[] buf = new byte[1024];
 			int count = 0;
@@ -318,57 +315,55 @@ class ServerThread implements Runnable{
 			}
 			System.out.println(content);
 			
-			try{
-				System.out.println("in 2nd try");
-				InputStream cIn = proc.getInputStream();
-				while(true){
-					count = cIn.read(buf);
-					if(count > 0){
-						String temp = new String(buf);
-						temp = temp.trim();
-						script = script + temp;
-					}
-					else{
-						break;
-					}
-				}
-				script.trim();
-				System.out.println(script.length());
-				cIn.close();
-				
-				System.out.println("checking script length");
-				
-				if(script.length() > 0){
-					out.print("HTTP/1.0 200 OK\r\n");
-					System.out.print("HTTP/1.0 200 OK\r\n");
-					
-					String expire = "Expires: " + getExpires() + "\r\n";
-					out.print(expire);
-					System.out.print(expire);
-					
-					String allow = "Allow: " + getAllow() + "\r\n";
-					out.print(allow);
-					System.out.print(allow);
-					
-					String contentType = "Content-Type: text/html\r\n";
-					out.print(contentType);
-					System.out.print(contentType);
-					
-					String contentEncoding = "Content-Encoding: " + getContentEncoding() + "\r\n";
-					out.print(contentEncoding);
-					System.out.print(contentEncoding);
-					
-					String contentLength = "Content-Length: " + script.length() + "\r\n";
-					out.print(contentLength);
-					System.out.print(contentLength);
-					
-					out.print(script);
-					System.out.print(script + "\r\n");
+			InputStream cIn = proc.getInputStream();
+			while(true){
+				count = cIn.read(buf);
+				if(count > 0){
+					String temp = new String(buf);
+					temp = temp.trim();
+					script = script + temp;
 				}
 				else{
-					out.print("HTTP/1.0 204 No Content\r\n\r\n");
+					break;
 				}
 			}
+			script.trim();
+			System.out.println(script.length());
+			cIn.close();
+			
+			System.out.println("checking script length");
+			
+			if(script.length() > 0){
+				out.print("HTTP/1.0 200 OK\r\n");
+				System.out.print("HTTP/1.0 200 OK\r\n");
+				
+				String expire = "Expires: " + getExpires() + "\r\n";
+				out.print(expire);
+				System.out.print(expire);
+				
+				String allow = "Allow: " + getAllow() + "\r\n";
+				out.print(allow);
+				System.out.print(allow);
+				
+				String contentType = "Content-Type: text/html\r\n";
+				out.print(contentType);
+				System.out.print(contentType);
+				
+				String contentEncoding = "Content-Encoding: " + getContentEncoding() + "\r\n";
+				out.print(contentEncoding);
+				System.out.print(contentEncoding);
+				
+				String contentLength = "Content-Length: " + script.length() + "\r\n";
+				out.print(contentLength);
+				System.out.print(contentLength);
+				
+				out.print(script);
+				System.out.print(script + "\r\n");
+			}
+			else{
+				out.print("HTTP/1.0 204 No Content\r\n\r\n");
+			}
+			
 			catch(Exception e){
 				return;
 			}
