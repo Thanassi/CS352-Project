@@ -214,7 +214,7 @@ class ServerThread implements Runnable{
     public void getRequest(String[] inputTokens, String path, File file){
         
 		//cgi file
-		if(inputTokens[1].endsWith(".cgi"){
+		if(inputTokens[1].endsWith(".cgi")){
 			//create arraylist to store env args
 			ArrayList<String> envList = new ArrayList<>();
 			
@@ -544,48 +544,54 @@ class ServerThread implements Runnable{
 				if(inputTokens[1].endsWith(".cgi")){
 					if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite() && file.canExecute()){
                     
-                    int length = -1;
-                    boolean type = false;
+						int length = -1;
+						boolean type = false;
 
-                    for(int i = 1; i < input.size(); i++){
-                        if(input.get(i).startsWith("Content-Length: ")){
-                            try{
-                                length = Integer.parseInt(input.get(i).substring(16));
-                            }catch(Exception e){
-                                return "411 Length Required";
-                            }
-                        }
-                        else if(input.get(i).equals("Content-Type: application/x-www-form-urlencoded")){
-                            type = true;
-                        }
-                        else if(input.get(i).startsWith("From: ")){
-                            from = input.get(i).substring(6);
-                        }
-                        else if(input.get(i).startsWith("User-Agent: ")){
-                            userAgent = input.get(i).substring(12);
-                        }
-						else if(input.get(i).startsWith("Cookie: ")){
-							cookie = input.get(i).substring(8);
+						for(int i = 1; i < input.size(); i++){
+							if(input.get(i).startsWith("Content-Length: ")){
+								try{
+									length = Integer.parseInt(input.get(i).substring(16));
+								}catch(Exception e){
+									return "411 Length Required";
+								}
+							}
+							else if(input.get(i).equals("Content-Type: application/x-www-form-urlencoded")){
+								type = true;
+							}
+							else if(input.get(i).startsWith("From: ")){
+								from = input.get(i).substring(6);
+							}
+							else if(input.get(i).startsWith("User-Agent: ")){
+								userAgent = input.get(i).substring(12);
+							}
+							else if(input.get(i).startsWith("Cookie: ")){
+								cookie = input.get(i).substring(8);
+							}
+							else{
+								content = input.get(i);
+							}
 						}
-                        else{
-                            content = input.get(i);
-                        }
-                    }
-                    // implement error codes
-                    if(length == -1){
-                        return "411 Length Required";
-                    }
-                    else if(length == 0){
-                        return "204 No Content";
-                    }
-                    
-                    if(type == false){
-                        return "500 Internal Server Error";
-                    }
-                    
-                    postLength = length;
-                    
-                    return "200 OK";
+						// implement error codes
+						if(length == -1){
+							return "411 Length Required";
+						}
+						else if(length == 0){
+							return "204 No Content";
+						}
+						
+						if(type == false){
+							return "500 Internal Server Error";
+						}
+						
+						postLength = length;
+						
+						return "200 OK";
+					
+					}else if(file.exists() && !file.isDirectory()){
+						return "403 Forbidden";
+					}
+					
+					return "404 Not Found";
 				}
 				
                 if(date != null){
