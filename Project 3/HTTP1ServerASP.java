@@ -109,6 +109,7 @@ class ServerThread implements Runnable{
     private String from = null;
     private String userAgent = null;
     private String content;
+	private String cookie = null;
     
     // Constructs a thread for a socket
     public ServerThread(Socket client){
@@ -211,33 +212,125 @@ class ServerThread implements Runnable{
     
     // Implemented GET request
     public void getRequest(String[] inputTokens, String path, File file){
-        // print out variables
+        
+		//cgi file
+		if(inputTokens[1].endsWith(".cgi"){
+			//create arraylist to store env args
+			ArrayList<String> envList = new ArrayList<>();
+			
+			envList.add("CONTENT_LENGTH=" + content.length());
+			envList.add("SCRIPT_NAME=" + inputTokens[1]);
+			envList.add("SERVER_NAME=" + getServerName());
+			envList.add("SERVER_PORT=" + getServerPort());
+			envList.add("REQUEST_METHOD=POST");
+			
+			if(from != null){
+				envList.add("HTTP_FROM=" + from);
+			}
+			
+			if(userAgent != null){
+				envList.add("HTTP_USER_AGENT=" + userAgent);
+			}
+			
+			if(cookie != null){
+				envList.add("HTTP_COOKIE=" + cookie);
+			}
+			
+			//convert list to array for exec function
+			String[] envArr = envList.toArray(new String[0]);
+			String script = "";
+			
+			// CGI script code
+			try{
+				Process proc = Runtime.getRuntime().exec(file.getPath(), envArr);
+				
+				byte[] buf = new byte[1024];
+				int count = 0;
+				
+				OutputStream cgi = proc.getOutputStream();
+				// check if content exists
+				if(content.length() > 0){
+					content = URLDecoder.decode(content, "UTF-8");
+					cgi.write(content.getBytes());
+					cgi.flush();
+					cgi.close();
+				}
+				
+				InputStream cIn = proc.getInputStream();
+				while(true){
+					count = cIn.read(buf);
+					if(count > 0){
+						String temp = new String(buf);
+						temp = temp.trim();
+						script = script + temp;
+					}
+					else{
+						break;
+					}
+				}
+				script.trim();
+				cIn.close();
+				
+				// Check script length
+				//send response to client
+				if(script.length() > 0){
+					out.print("HTTP/1.0 200 OK\r\n"); 
+					
+					String expire = "Expires: " + getExpires() + "\r\n";
+					out.print(expire);
+					
+					String allow = "Allow: " + getAllow() + "\r\n";
+					out.print(allow);
+					
+					String contentType = "Content-Type: text/html\r\n";
+					out.print(contentType);
+					
+					String contentEncoding = "Content-Encoding: " + getContentEncoding() + "\r\n";
+					out.print(contentEncoding);
+					
+					String contentLength = "Content-Length: " + script.length() + "\r\n";
+					out.print(contentLength);
+					
+					if(script.startsWith("Set-Cookie: ")){
+						out.print(script);
+					}
+					else{
+						out.print("\r\n" + script);
+					}
+				}
+				else{
+					out.print("HTTP/1.0 204 No Content\r\n\r\n");
+				}           
+			}
+			catch(Exception e){
+				return;
+			}
+			
+			
+			return;
+		}
+		
+		//not cgi file
+		// print out variables
         out.print("HTTP/1.0 200 OK\r\n");
-        System.out.print("HTTP/1.0 200 OK\r\n");
         
         String lastModified = "Last-Modified: " + getLastModified(file) + "\r\n";
         out.print(lastModified);
-        System.out.print(lastModified);
         
         String expire = "Expires: " + getExpires() + "\r\n";
         out.print(expire);
-        System.out.print(expire);
         
         String allow = "Allow: " + getAllow() + "\r\n";
         out.print(allow);
-        System.out.print(allow);
         
         String contentType = "Content-Type: " + getContentType(path) + "\r\n";
         out.print(contentType);
-        System.out.print(contentType);
         
         String contentEncoding = "Content-Encoding: " + getContentEncoding() + "\r\n";
         out.print(contentEncoding);
-        System.out.print(contentEncoding);
         
         String contentLength = "Content-Length: " + getContentLength(file) + "\r\n\r\n";
         out.print(contentLength);
-        System.out.print(contentLength);
         
         //if text, print as a string
         try{
@@ -283,6 +376,7 @@ class ServerThread implements Runnable{
         envList.add("SCRIPT_NAME=" + inputTokens[1]);
         envList.add("SERVER_NAME=" + getServerName());
         envList.add("SERVER_PORT=" + getServerPort());
+		envList.add("REQUEST_METHOD=POST");
         
         if(from != null){
             envList.add("HTTP_FROM=" + from);
@@ -291,6 +385,10 @@ class ServerThread implements Runnable{
         if(userAgent != null){
             envList.add("HTTP_USER_AGENT=" + userAgent);
         }
+		
+		if(cookie != null){
+			envList.add("HTTP_COOKIE=" + cookie);
+		}
         
         //convert list to array for exec function
         String[] envArr = envList.toArray(new String[0]);
@@ -347,7 +445,12 @@ class ServerThread implements Runnable{
                 String contentLength = "Content-Length: " + script.length() + "\r\n";
                 out.print(contentLength);
                 
-                out.print(script);
+				if(script.startsWith("Set-Cookie: ")){
+					out.print(script);
+				}
+				else{
+					out.print("\r\n" + script);
+				}
             }
             else{
                 out.print("HTTP/1.0 204 No Content\r\n\r\n");
@@ -438,6 +541,53 @@ class ServerThread implements Runnable{
             
                 file = new File("." + inputTokens[1]);
                 
+				if(inputTokens[1].endsWith(".cgi")){
+					if(file.exists() && !file.isDirectory() && file.canRead() && file.canWrite() && file.canExecute()){
+                    
+                    int length = -1;
+                    boolean type = false;
+
+                    for(int i = 1; i < input.size(); i++){
+                        if(input.get(i).startsWith("Content-Length: ")){
+                            try{
+                                length = Integer.parseInt(input.get(i).substring(16));
+                            }catch(Exception e){
+                                return "411 Length Required";
+                            }
+                        }
+                        else if(input.get(i).equals("Content-Type: application/x-www-form-urlencoded")){
+                            type = true;
+                        }
+                        else if(input.get(i).startsWith("From: ")){
+                            from = input.get(i).substring(6);
+                        }
+                        else if(input.get(i).startsWith("User-Agent: ")){
+                            userAgent = input.get(i).substring(12);
+                        }
+						else if(input.get(i).startsWith("Cookie: ")){
+							cookie = input.get(i).substring(8);
+						}
+                        else{
+                            content = input.get(i);
+                        }
+                    }
+                    // implement error codes
+                    if(length == -1){
+                        return "411 Length Required";
+                    }
+                    else if(length == 0){
+                        return "204 No Content";
+                    }
+                    
+                    if(type == false){
+                        return "500 Internal Server Error";
+                    }
+                    
+                    postLength = length;
+                    
+                    return "200 OK";
+				}
+				
                 if(date != null){
                     try{
                         //parse if-modified-since date from request
@@ -503,6 +653,9 @@ class ServerThread implements Runnable{
                         else if(input.get(i).startsWith("User-Agent: ")){
                             userAgent = input.get(i).substring(12);
                         }
+						else if(input.get(i).startsWith("Cookie: ")){
+							cookie = input.get(i).substring(8);
+						}
                         else{
                             content = input.get(i);
                         }

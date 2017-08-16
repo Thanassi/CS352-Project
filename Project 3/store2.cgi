@@ -57,7 +57,7 @@ elif request == "POST:
 					 "<br/><br/></form></body></html")
 			sys.exit()
 		
-		expireTime = datetime.now() + timedelta(days=1)
+		expireTime = datetime.now() + timedelta(minutes=3)
 		time = mktime(expireTime.timetuple())
 		expires = formatdate(timeval=time, localtime=True, usegmt=True)
 		expires=expires[:expires.find("-")]
