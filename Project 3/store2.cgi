@@ -15,11 +15,11 @@ contentLength = 0
 request = os.environ.get("REQUEST_METHOD", "")
 
 if request == "GET":
-	sys.stdout.write("<html><body> <form method="post" action="store.cgi"> "
-					 "Username: <input type="text" name="fname" required> "
+	sys.stdout.write("<html><body> <form method=\"post\" action=\"store.cgi\"> "
+					 "Username: <input type=\"text\" name=\"fname\" required> "
 					 "<br/><br/> Password: <input type=password "
-					 "name="fpassword" required><br/><br/> "
-					 "<input type="submit" name="Submit" value="Submit"> "
+					 "name=\"fpassword\" required><br/><br/> "
+					 "<input type=\"submit\" name=\"Submit\" value=\"Submit\"> "
 					 "<br/><br/></form></body></html")
 					 
 elif request == "POST:
