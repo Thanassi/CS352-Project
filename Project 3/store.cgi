@@ -14,6 +14,7 @@ contentLength = 0
 
 request = os.environ.get("REQUEST_METHOD", "")
 
+#create username and password field, create submit button
 if request == "GET":
 	sys.stdout.write("<html><body> <form method=\"post\" action=\"store.cgi\"> "
 					 "Username: <input type=\"text\" name=\"fname\" required> "
@@ -23,6 +24,8 @@ if request == "GET":
 					 "<br/><br/></form></body></html")
 					 
 elif request == "POST:
+	
+	#split cookie on ; and =
 	cookie = os.environ.get("HTTP_COOKIE", "")
 	split = cookie.split(";")
 	splitCookie = [tuple(split2.split("=")) for split2 in split]
@@ -32,11 +35,13 @@ elif request == "POST:
 			if name == "name" or name == " name":
 				username = t[1]
 	
-	contentLength = int(os.environ.get("CONTENT_LENGTH, ""))
+	#split content on & and =
+	contentLength = int(os.environ.get("CONTENT_LENGTH", ""))
 	content = sys.stdin.read(contentLength)
 	split3 = content.split("&")
 	splitContent = [tuple(split4.split("=")) for split4 in split3]
 	
+	#no username
 	if username == "":
 		
 		for sC in splitContent:
@@ -47,6 +52,7 @@ elif request == "POST:
 			elif sC[0] == "Submit":
 				submit = True
 		
+		#no username, password, or submit
 		if(username == "" or password == "" or submit == False):
 			sys.stdout.write("Set-Cookie: cart=\r\n\r\n")
 			sys.stdout.write("<html><body> <form method=\"post\" action=\"store.cgi\"> "
@@ -57,6 +63,7 @@ elif request == "POST:
 					 "<br/><br/></form></body></html")
 			sys.exit()
 		
+		#set expire time to 3 minutes after current time
 		expireTime = datetime.now() + timedelta(minutes=3)
 		time = mktime(expireTime.timetuple())
 		expires = formatdate(timeval=time, localtime=True, usegmt=True)
@@ -75,6 +82,4 @@ elif request == "POST:
 						 "</select><input type=\"submit\" name=\"add\" value=\"Add To Cart\"> "
 						 "<br/></form></body></html>")
 		
-	else:
-
 				
